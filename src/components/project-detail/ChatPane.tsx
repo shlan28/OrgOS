@@ -26,6 +26,8 @@ interface ChatPaneProps {
   activeSession: ProjectSession | null
   /** 当前会话关联的任务（auto 会话，消息实时取 run） */
   job: AutoJob | null
+  /** 当前选中 ADE（插话轨迹归属当前 agent tab；ProjectDetail 上提） */
+  activeAgentId: string | null
   /** 更新项目数据（手动会话消息/日志 append / 会话改名 / 成员写操作） */
   onUpdateProject: (projectId: string, updater: (p: Project) => Project) => void
   /** 自动化运行引擎（auto 会话消息联动 / Gate 动作 / 插话） */
@@ -37,7 +39,7 @@ interface ChatPaneProps {
  * + 消息流（auto 实时联动引擎）+ 插话输入框 + 会话成员只读抽屉。
  */
 export default function ChatPane({
-  project, activeSession, job, onUpdateProject, engine,
+  project, activeSession, job, activeAgentId, onUpdateProject, engine,
 }: ChatPaneProps) {
   /** 成员抽屉开关 */
   const [membersOpen, setMembersOpen] = useState(false)
@@ -117,7 +119,7 @@ export default function ChatPane({
     }
 
     const time = nowTime()
-    // 手动会话：append 人消息 + agent CLI 轨迹行（同一次更新事务）
+    // 手动会话：append 人消息 + agent CLI 轨迹行（同一次更新事务；轨迹归属当前选中 ADE tab）
     const humanMsg: RunMessage = {
       id: msgId(), role: '人', text, time,
       sender: { name: CURRENT_USER.name, initial: CURRENT_USER.initial, color: CURRENT_USER.color },
@@ -127,7 +129,7 @@ export default function ChatPane({
       sessions: p.sessions.map((s) => (s.id === activeSession.id ? {
         ...s,
         messages: [...s.messages, humanMsg],
-        logs: [...(s.logs ?? []), { id: msgId(), time, kind: 'prompt' as const, text }],
+        logs: [...(s.logs ?? []), { id: msgId(), time, kind: 'prompt' as const, text, agentId: activeAgentId ?? undefined }],
       } : s)),
     }))
 
@@ -144,7 +146,7 @@ export default function ChatPane({
         sessions: p.sessions.map((s) => (s.id === activeSession.id ? {
           ...s,
           messages: [...s.messages, adeMsg],
-          logs: [...(s.logs ?? []), { id: msgId(), time: replyTime, kind: 'think' as const, text: '空闲会话指令已入队，等待调度执行' }],
+          logs: [...(s.logs ?? []), { id: msgId(), time: replyTime, kind: 'think' as const, text: '空闲会话指令已入队，等待调度执行', agentId: activeAgentId ?? undefined }],
         } : s)),
       }))
     }, MANUAL_REPLY_DELAY)

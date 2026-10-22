@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import TitleBar from './components/TitleBar'
 import Sidebar from './components/Sidebar'
 import ChatInput from './components/ChatInput'
 import ContextSelector from './components/ContextSelector'
 import ProjectCenter from './components/ProjectCenter'
 import ProjectDetail from './components/ProjectDetail'
+import SettingsPage, { type SettingsSection } from './components/SettingsPage'
 import HomeGrid, { type PaneSession } from './components/home-grid/HomeGrid'
 import { projects as initialProjects, projectFolders as initialFolders, createFolderMembers, type Notification, type Project, type ProjectFolder } from './data/projects'
+import { createDefaultUserSettings, createDefaultInviteData, type InviteData, type UserSettings } from './data/settings'
 import { useAutomationEngine } from './hooks/useAutomationEngine'
 import { MultiViewIcon } from './components/icons'
 
@@ -14,6 +16,7 @@ type View =
   | { type: 'home' }
   | { type: 'project-center' }
   | { type: 'project-detail'; projectId: string; initialNav?: 'workflow'; focusJobId?: string }
+  | { type: 'settings' }
 
 /** 首页多视窗初始槽位：当前会话（新对话）进左上，其余未分配 */
 const INITIAL_PANES: PaneSession[] = [{ kind: 'new' }, null, null, null]
@@ -27,6 +30,14 @@ export default function App() {
   const [multiView, setMultiView] = useState(false)
   /** 四窗格会话槽位（'new' / 'history:id' / null） */
   const [panes, setPanes] = useState<PaneSession[]>(INITIAL_PANES)
+  /** 设置页当前分区（Agent 设置 / 邀请成员） */
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('agent')
+  /** 进入设置页前的视图（× 关闭时回到该视图） */
+  const prevViewRef = useRef<View>({ type: 'home' })
+  /** 用户设置（Agent 设置面板数据，本地 state 不持久化） */
+  const [userSettings, setUserSettings] = useState<UserSettings>(createDefaultUserSettings)
+  /** 邀请成员数据（本地 state 不持久化） */
+  const [inviteData, setInviteData] = useState<InviteData>(createDefaultInviteData)
 
   const engine = useAutomationEngine(projects, setProjects)
 
@@ -85,6 +96,23 @@ export default function App() {
     })
   }
 
+  /** 打开设置页（记录当前视图，供 × 关闭时返回） */
+  const handleOpenSettings = () => {
+    if (view.type !== 'settings') prevViewRef.current = view
+    setView({ type: 'settings' })
+  }
+
+  /** 关闭设置页：回到进入前视图 */
+  const handleCloseSettings = () => setView(prevViewRef.current)
+
+  /** 更新用户设置（局部 updater） */
+  const handleUpdateSettings = (updater: (s: UserSettings) => UserSettings) =>
+    setUserSettings((s) => updater(s))
+
+  /** 更新邀请成员数据（局部 updater） */
+  const handleUpdateInvite = (updater: (d: InviteData) => InviteData) =>
+    setInviteData((d) => updater(d))
+
   return (
     <div className="desktop">
       <div className="window">
@@ -98,9 +126,10 @@ export default function App() {
         <div className="window-body">
           {sidebarVisible && (
             <Sidebar
-              projectCenterActive={view.type !== 'home'}
+              projectCenterActive={view.type === 'project-center' || view.type === 'project-detail'}
               onNewChat={() => setView({ type: 'home' })}
               onOpenProjectCenter={() => setView({ type: 'project-center' })}
+              onOpenSettings={handleOpenSettings}
             />
           )}
           <main className="main-area">
@@ -158,6 +187,18 @@ export default function App() {
                 engine={engine}
                 initialNav={view.initialNav}
                 focusJobId={view.focusJobId}
+              />
+            )}
+
+            {view.type === 'settings' && (
+              <SettingsPage
+                section={settingsSection}
+                onChangeSection={setSettingsSection}
+                onClose={handleCloseSettings}
+                settings={userSettings}
+                onUpdateSettings={handleUpdateSettings}
+                invite={inviteData}
+                onUpdateInvite={handleUpdateInvite}
               />
             )}
           </main>

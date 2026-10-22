@@ -451,3 +451,21 @@ export const MultiViewIcon = (p: IconProps) =>
       <rect x="13" y="12.5" width="8" height="7.5" rx="1.6" />
     </>
   ))
+
+/** 邮件（邀请成员 · 邮箱邀请） */
+export const MailIcon = (p: IconProps) =>
+  base(p, (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m4 7 8 6 8-6" />
+    </>
+  ))
+
+/** 链接（邀请成员 · 邀请链接） */
+export const LinkIcon = (p: IconProps) =>
+  base(p, (
+    <>
+      <path d="M10.5 13.5a3.5 3.5 0 0 0 5 0l3-3a3.5 3.5 0 0 0-5-5l-1.2 1.2" />
+      <path d="M13.5 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.2-1.2" />
+    </>
+  ))

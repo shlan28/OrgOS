@@ -1,0 +1,468 @@
+/* ===== 设置页（页头 + 双栏） ===== */
+
+.settings-page-head {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding: 34px 32px 0;
+}
+
+.settings-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* × 关闭按钮（30×30 图标按钮，同 .titlebar-icon 规格族） */
+.settings-close {
+  border: none;
+  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  font-family: inherit;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.settings-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+.settings-page {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  padding: 8px 32px 48px;
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+/* 左导航（sticky） */
+.settings-nav {
+  width: 196px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+}
+
+.settings-nav-title {
+  font-size: 11.5px;
+  color: #9a9a9a;
+  margin: 12px 0 6px 4px;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-nav-item svg {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+.settings-nav-item:hover {
+  background: rgba(0, 0, 0, 0.055);
+}
+
+.settings-nav-item.active {
+  background: rgba(0, 0, 0, 0.07);
+  font-weight: 600;
+}
+
+/* 右内容 */
+.settings-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ===== Agent 设置 / 邀请成员 面板内行布局（依赖 App.css 的 Section/Row 体系） ===== */
+
+/* 我的 ADE 行首图标 */
+.ade-row-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: var(--status-neutral-bg);
+  color: var(--text-icon);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 默认 ADE 徽标 */
+.me-tag.default-tag {
+  color: var(--status-info);
+  border-color: transparent;
+  background: var(--status-info-bg);
+}
+
+/* 工具分组小标签 */
+.settings-tools-group-label {
+  font-size: 11px;
+  color: #b0b0b0;
+  padding: 4px 16px 0;
+}
+
+/* 面板底部当前用户说明（弱提示） */
+.settings-current-user {
+  margin: 16px 0 0 4px;
+  font-size: 11.5px;
+  color: #b0b0b0;
+}
+
+/* 下拉行（左标题右控件，紧贴 Settings 行规格） */
+.settings-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 16px;
+}
+
+.settings-field-row + .settings-field-row {
+  border-top: 1px solid var(--row-divider);
+}
+
+.settings-field-row .field-label {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.settings-field-row .field-select {
+  width: 220px;
+}
+
+.settings-field-row .field-select.wide {
+  width: 320px;
+}
+
+/* 工具开关区（沿用 AdeSettingsModal 视觉，作用域在设置页） */
+.settings-tools-head {
+  padding: 12px 16px 8px;
+  border-top: 1px solid var(--row-divider);
+}
+
+.settings-tools-title {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.settings-tools-desc {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.settings-tools-desc .hl {
+  color: var(--status-info);
+}
+
+.settings-tools-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.settings-tools-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.settings-tool-tab {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.settings-tool-tab.active {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.settings-tools-ops {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.settings-tools-link {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--status-info);
+}
+
+.settings-tools-link.muted {
+  color: var(--text-secondary);
+}
+
+.settings-tools-link:hover {
+  text-decoration: underline;
+}
+
+.settings-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px 16px 12px;
+}
+
+.settings-tool-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+
+.settings-tool-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-tool-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-tool-name {
+  font-size: 12.5px;
+}
+
+.settings-tool-warn {
+  font-size: 10.5px;
+  color: var(--status-warning);
+}
+
+.settings-tool-warn .go-config {
+  color: var(--status-info);
+  margin-left: 4px;
+}
+
+/* ADE.md 编辑器（草稿模式） */
+.settings-ade-md {
+  padding: 12px 16px;
+  border-top: 1px solid var(--row-divider);
+}
+
+.settings-ade-md-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.settings-ade-md-unsaved {
+  font-size: 12px;
+  color: var(--status-warning);
+}
+
+.settings-ade-md-textarea {
+  width: 100%;
+  height: 220px;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', 'Noto Sans Mono CJK TC', monospace;
+  color: var(--text-primary);
+  outline: none;
+  resize: vertical;
+}
+
+.settings-ade-md-textarea:focus {
+  border-color: #d0d0d4;
+}
+
+.settings-ade-md-textarea::placeholder {
+  color: #b0b0b0;
+  font-family: inherit;
+}
+
+.settings-ade-md-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ===== 邀请成员面板 ===== */
+
+.invite-seg {
+  padding: 12px 16px 4px;
+}
+
+/* 链接行 */
+.invite-link-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+}
+
+.invite-link-row .field-input {
+  flex: 1;
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', 'Noto Sans Mono CJK TC', monospace;
+  font-size: 12px;
+}
+
+/* 链接设置（有效期 / 权限） */
+.invite-link-opts {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px 12px;
+}
+
+.invite-link-opt {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.invite-link-opt-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.invite-link-opt .field-select {
+  width: 100%;
+}
+
+/* 邮箱邀请表单 */
+.invite-mail-form {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invite-mail-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.invite-mail-line .field-input {
+  flex: 1;
+}
+
+.invite-mail-line .field-select {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.invite-form-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.invite-form-hint.danger {
+  color: var(--status-danger);
+}
+
+/* 邮箱 mono 徽标行 */
+.invite-email {
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', 'Noto Sans Mono CJK TC', monospace;
+  font-size: 12.5px;
+}
+
+/* 组织成员行 */
+.org-member-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.online-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-success);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.me-tag {
+  font-size: 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+  color: var(--text-secondary);
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+
+/* 权限说明 */
+.invite-perm-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 10px 16px 12px;
+  line-height: 1.7;
+  border-top: 1px solid var(--row-divider);
+}
+
+.invite-perm-note b {
+  color: var(--text-primary);
+  font-weight: 600;
+}

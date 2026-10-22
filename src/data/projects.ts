@@ -511,81 +511,128 @@ export interface TerminalLog {
   kind: 'sys' | 'prompt' | 'think' | 'cmd' | 'out' | 'file' | 'tool' | 'ok' | 'err' | 'info'
   /** 多行内容用 \n 分隔（out/sys/file 支持） */
   text: string
+  /** 归属 ADE id（Agent CLI 多 agent tab 分桶用；缺省 = 主 agent（agents[0]）） */
+  agentId?: string
 }
 
-const tl = (id: string, time: string, kind: TerminalLog['kind'], text: string): TerminalLog =>
-  ({ id, time, kind, text })
+const tl = (
+  id: string, time: string, kind: TerminalLog['kind'], text: string, agentId?: string,
+): TerminalLog => ({ id, time, kind, text, agentId })
 
 /**
- * auto 会话 CLI 轨迹：从 run.messages 派生 agent loop 展开态。
+ * 步骤归属 agent：测试类步骤挂测试 agent（role 含「测试」的第一个），其余挂主 agent。
+ * 单 agent 项目恒返回主 agent id；无 agent 项目返回 undefined（全部行缺省桶）。
+ */
+const agentOfStep = (agents: AdeAgent[], step: string): string | undefined => {
+  if (agents.length <= 1) return agents[0]?.id
+  if (step.includes('测试') || step.includes('用例')) {
+    return agents.find((a) => a.role.includes('测试'))?.id ?? agents[0].id
+  }
+  return agents[0].id
+}
+
+/**
+ * auto 会话 CLI 轨迹：从 run.messages 派生 agent loop 展开态（按 agent 分桶）。
  * 每条消息展开为多行（思考 → 工具调用 → 命令 → 原始输出 → 结果），
  * 还原「在终端里看 agent 干活」的观感；引擎推进时自动增长。
+ * 多 agent 时：sys 横幅/装载/系统消息每个 agent 桶各一份（各自 CLI 实例），
+ * 步骤轨迹按 agentOfStep 分工打标。
  */
-export function runLogsOf(run: JobRun | undefined): TerminalLog[] {
+export function runLogsOf(run: JobRun | undefined, agents: AdeAgent[] = []): TerminalLog[] {
   if (!run) return []
   const logs: TerminalLog[] = []
   let seq = 0
-  const nid = () => `${run.id}-t${seq++}`
+  const nid = (agentId?: string) => `${run.id}${agentId ? `-${agentId}` : ''}-t${seq++}`
+  /** 每个参与 agent 的 CLI 横幅 + 装载行（agent 无 = 单桶缺省） */
+  const bannerOf = (agent?: AdeAgent) => tl(
+    nid(agent?.id),
+    '08:00:00',
+    'sys',
+    agent
+      ? `Loom Agent CLI v2.4.1\n${agent.name} · ${agent.model} · ${agent.role} · workdir ~/workspace/loomweb`
+      : 'Loom Agent CLI v2.4.1\nresearch-engineer-ade · GLM-glm-5.3 · workdir ~/workspace/loomweb',
+    agent?.id,
+  )
+  if (agents.length === 0) {
+    logs.push(bannerOf(undefined))
+    logs.push(tl(nid(), '08:00:00', 'info', `▸ 装载任务 ${run.jobId}，恢复运行上下文`))
+  } else {
+    agents.forEach((a) => {
+      logs.push(bannerOf(a))
+      logs.push(tl(nid(a.id), '08:00:00', 'info', `▸ 装载任务 ${run.jobId}，恢复运行上下文`, a.id))
+    })
+  }
 
-  logs.push(tl(nid(), '08:00:00', 'sys', 'Loom Agent CLI v2.4.1\nresearch-engineer-ade · GLM-glm-5.3 · workdir ~/workspace/loomweb'))
-  logs.push(tl(nid(), '08:00:00', 'info', `▸ 装载任务 ${run.jobId}，恢复运行上下文`))
-
+  /** 当前消息归属 agent（人插话/ADE 回应挂在当前执行步骤的 agent 上） */
+  let currentAgent = agents[0]?.id
   run.messages.forEach((m) => {
     const time = m.time || '08:00:00'
+    /** 本条消息涉及步骤时的归属 agent */
+    const stepAgent = (step: string) => agentOfStep(agents, step)
     if (m.role === '系统') {
-      logs.push(tl(nid(), time, 'info', `▸ ${m.text}`))
+      // 系统事件每个 agent 桶各一份
+      if (agents.length === 0) {
+        logs.push(tl(nid(), time, 'info', `▸ ${m.text}`))
+      } else {
+        agents.forEach((a) => logs.push(tl(nid(a.id), time, 'info', `▸ ${m.text}`, a.id)))
+      }
     } else if (m.role === '人') {
-      logs.push(tl(nid(), time, 'prompt', m.text))
-      logs.push(tl(nid(), time, 'think', `收到指令，解析意图并规划动作`))
+      logs.push(tl(nid(currentAgent), time, 'prompt', m.text, currentAgent))
+      logs.push(tl(nid(currentAgent), time, 'think', `收到指令，解析意图并规划动作`, currentAgent))
     } else if (m.text.startsWith('开始执行：')) {
       const step = m.text.slice('开始执行：'.length)
-      logs.push(tl(nid(), time, 'think', `进入步骤「${step}」，选择工具与命令序列`))
+      currentAgent = stepAgent(step) ?? currentAgent
+      logs.push(tl(nid(currentAgent), time, 'think', `进入步骤「${step}」，选择工具与命令序列`, currentAgent))
       if (step.includes('拉取')) {
-        logs.push(tl(nid(), time, 'tool', 'git(repos) --action sync --branch dev'))
-        logs.push(tl(nid(), time, 'cmd', 'git fetch --depth=1 origin dev && git reset --hard origin/dev'))
-        logs.push(tl(nid(), time, 'out', 'From https://gitlab.aicoda.tech/fe/loomweb\n * branch  dev -> FETCH_HEAD\nHEAD is now at 9f2c1ab refactor: 登录模块状态收敛'))
+        logs.push(tl(nid(currentAgent), time, 'tool', 'git(repos) --action sync --branch dev', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'cmd', 'git fetch --depth=1 origin dev && git reset --hard origin/dev', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', 'From https://gitlab.aicoda.tech/fe/loomweb\n * branch  dev -> FETCH_HEAD\nHEAD is now at 9f2c1ab refactor: 登录模块状态收敛', currentAgent))
       } else if (step.includes('安装') || step.includes('依赖')) {
-        logs.push(tl(nid(), time, 'cmd', 'npm ci --prefer-offline'))
-        logs.push(tl(nid(), time, 'out', 'added 312 packages in 18s\nfound 0 vulnerabilities'))
+        logs.push(tl(nid(currentAgent), time, 'cmd', 'npm ci --prefer-offline', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', 'added 312 packages in 18s\nfound 0 vulnerabilities', currentAgent))
       } else if (step.includes('测试')) {
-        logs.push(tl(nid(), time, 'tool', 'shell(exec) -- npm test'))
-        logs.push(tl(nid(), time, 'cmd', 'npm test -- --coverage --runInBand'))
-        logs.push(tl(nid(), time, 'out', 'PASS src/utils/__tests__/format.test.ts (12)\nPASS src/hooks/__tests__/useSession.test.ts (18)\nPASS src/components/__tests__/ChatInput.test.tsx (28)\n\nTests: 58 passed, 58 total\nCoverage: 87.4% statements'))
+        logs.push(tl(nid(currentAgent), time, 'tool', 'shell(exec) -- npm test', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'cmd', 'npm test -- --coverage --runInBand', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', 'PASS src/utils/__tests__/format.test.ts (12)\nPASS src/hooks/__tests__/useSession.test.ts (18)\nPASS src/components/__tests__/ChatInput.test.tsx (28)\n\nTests: 58 passed, 58 total\nCoverage: 87.4% statements', currentAgent))
       } else if (step.includes('构建') || step.includes('打包')) {
-        logs.push(tl(nid(), time, 'cmd', 'npm run build -- --mode production'))
-        logs.push(tl(nid(), time, 'out', 'vite v5.4.21 building for production...\n✓ 123 modules transformed\ndist/index.html        0.39 kB\ndist/assets/app.js   182.4 kB │ gzip: 58.9 kB\ndist/assets/app.css   24.2 kB │ gzip: 5.1 kB\n✓ built in 1.73s'))
+        logs.push(tl(nid(currentAgent), time, 'cmd', 'npm run build -- --mode production', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', 'vite v5.4.21 building for production...\n✓ 123 modules transformed\ndist/index.html        0.39 kB\ndist/assets/app.js   182.4 kB │ gzip: 58.9 kB\ndist/assets/app.css   24.2 kB │ gzip: 5.1 kB\n✓ built in 1.73s', currentAgent))
       } else if (step.includes('检查') || step.includes('静态')) {
-        logs.push(tl(nid(), time, 'cmd', 'npm run lint -- --max-warnings 0'))
-        logs.push(tl(nid(), time, 'out', '✖ 3 problems (0 errors, 3 warnings)\n  src/utils/date.ts:42  no-unused-var\n  src/App.tsx:88       no-unused-var\n  src/main.tsx:12      no-console'))
+        logs.push(tl(nid(currentAgent), time, 'cmd', 'npm run lint -- --max-warnings 0', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', '✖ 3 problems (0 errors, 3 warnings)\n  src/utils/date.ts:42  no-unused-var\n  src/App.tsx:88       no-unused-var\n  src/main.tsx:12      no-console', currentAgent))
       } else if (step.includes('汇总')) {
-        logs.push(tl(nid(), time, 'tool', 'gitlab(mr.list) --state merged --range 7d'))
-        logs.push(tl(nid(), time, 'out', 'merged MRs: 12 · issues closed: 8 · commits: 47'))
-        logs.push(tl(nid(), time, 'tool', 'fs(write) -- data/summary.json'))
-        logs.push(tl(nid(), time, 'file', 'data/summary.json（写入 1.2 KB）\n{ "mrs": 12, "issues": 8, "commits": 47, "hotFiles": ["src/App.tsx"] }'))
+        logs.push(tl(nid(currentAgent), time, 'tool', 'gitlab(mr.list) --state merged --range 7d', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', 'merged MRs: 12 · issues closed: 8 · commits: 47', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'tool', 'fs(write) -- data/summary.json', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'file', 'data/summary.json（写入 1.2 KB）\n{ "mrs": 12, "issues": 8, "commits": 47, "hotFiles": ["src/App.tsx"] }', currentAgent))
       } else if (step.includes('周报') || step.includes('生成')) {
-        logs.push(tl(nid(), time, 'tool', 'kb(search) -- "周报模板 进展 风险"'))
-        logs.push(tl(nid(), time, 'out', '命中 1 个模板：weekly-standard.md'))
-        logs.push(tl(nid(), time, 'file', 'weekly-report-0828.md（草稿 · 6 章节）\n# 本周进展 · Loom Web\n## 进展\n- 四格布局详情页落地（+1,842 行）\n## 风险\n- 结算页灰度需网关配置确认'))
+        logs.push(tl(nid(currentAgent), time, 'tool', 'kb(search) -- "周报模板 进展 风险"', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', '命中 1 个模板：weekly-standard.md', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'file', 'weekly-report-0828.md（草稿 · 6 章节）\n# 本周进展 · Loom Web\n## 进展\n- 四格布局详情页落地（+1,842 行）\n## 风险\n- 结算页灰度需网关配置确认', currentAgent))
       } else if (step.includes('发布') || step.includes('归档')) {
-        logs.push(tl(nid(), time, 'tool', 'shell(exec) -- ade release prepare'))
-        logs.push(tl(nid(), time, 'out', 'checksum verified · 42 files staged'))
+        logs.push(tl(nid(currentAgent), time, 'tool', 'shell(exec) -- ade release prepare', currentAgent))
+        logs.push(tl(nid(currentAgent), time, 'out', 'checksum verified · 42 files staged', currentAgent))
       } else {
-        logs.push(tl(nid(), time, 'cmd', `ade run ${step}`))
+        logs.push(tl(nid(currentAgent), time, 'cmd', `ade run ${step}`, currentAgent))
       }
     } else if (m.result) {
-      logs.push(tl(nid(), time, 'ok', `${m.text} ${m.result.summary}`))
+      logs.push(tl(nid(currentAgent), time, 'ok', `${m.text} ${m.result.summary}`, currentAgent))
       m.result.files.forEach((f) => {
-        logs.push(tl(nid(), time, 'file', `${f.name}（产物已归档）`))
+        logs.push(tl(nid(currentAgent), time, 'file', `${f.name}（产物已归档）`, currentAgent))
       })
     } else if (m.actions) {
-      logs.push(tl(nid(), time, 'info', `▸ ${m.text}`))
-      logs.push(tl(nid(), time, 'think', 'agent loop 暂停，等待人工确认后继续'))
+      logs.push(tl(nid(currentAgent), time, 'info', `▸ ${m.text}`, currentAgent))
+      logs.push(tl(nid(currentAgent), time, 'think', 'agent loop 暂停，等待人工确认后继续', currentAgent))
     } else {
-      logs.push(tl(nid(), time, 'out', m.text))
+      logs.push(tl(nid(currentAgent), time, 'out', m.text, currentAgent))
     }
   })
   return logs
 }
+
+/** 一条轨迹的归属 agent id（缺省 = 主 agent id；agent 无则 undefined） */
+export const logAgentIdOf = (log: TerminalLog, agents: AdeAgent[]): string | undefined =>
+  log.agentId ?? agents[0]?.id
 
 /** 项目会话（格 1 会话列表条目） */
 export interface ProjectSession {
@@ -819,21 +866,30 @@ export const projects: Project[] = [
           { id: 'sm5', role: '人', text: '好，那按 10% 起步，周五观察一天再扩。', time: '14:25:20', sender: { name: 'shilu', initial: 'S', color: '#5b7ba6' } },
         ],
         logs: [
-          { id: 'tl0', time: '14:20:01', kind: 'sys', text: 'Loom Agent CLI v2.4.1\nresearch-engineer-ade · GLM-glm-5.3 · 会话模式（结算页灰度方案讨论）\n成员：shilu、wang、luyu' },
-          { id: 'tl1', time: '14:21:10', kind: 'prompt', text: '结算页这次想走灰度发布，两位怎么看范围？' },
-          { id: 'tl2', time: '14:21:11', kind: 'think', text: '用户发起方案讨论，先检索结算页现状与灰度相关配置' },
-          { id: 'tl3', time: '14:21:12', kind: 'tool', text: 'fs(read) -- src/pages/checkout/**' },
-          { id: 'tl4', time: '14:21:13', kind: 'file', text: 'src/pages/checkout/index.tsx（读取 218 行）\n// 结算页入口 · 支付渠道配置\ngate: { enabled: false }' },
-          { id: 'tl5', time: '14:22:40', kind: 'think', text: '读取网关路由配置，确认按比例路由能力' },
-          { id: 'tl6', time: '14:22:41', kind: 'tool', text: 'gateway(query) -- 路由策略' },
-          { id: 'tl7', time: '14:22:41', kind: 'out', text: 'gray-route: enabled · strategies [percent, region] · 当前命中 0%' },
-          { id: 'tl8', time: '14:23:02', kind: 'prompt', text: '建议先放 10% 流量观察支付成功率。' },
-          { id: 'tl9', time: '14:24:35', kind: 'prompt', text: '后端网关已支持按比例路由，没问题。' },
-          { id: 'tl10', time: '14:25:20', kind: 'prompt', text: '好，那按 10% 起步，周五观察一天再扩。' },
-          { id: 'tl11', time: '14:25:21', kind: 'think', text: '结论已收敛，生成会议纪要并归档' },
-          { id: 'tl12', time: '14:25:23', kind: 'tool', text: 'fs(write) -- minutes/结算页灰度方案-1011.md' },
-          { id: 'tl13', time: '14:25:23', kind: 'file', text: 'minutes/结算页灰度方案-1011.md（写入 0.9 KB）\n# 结算页灰度方案\n- 灰度起步：10% 流量\n- 观察指标：支付成功率\n- 扩量节奏：周五观察一天后评估' },
-          { id: 'tl14', time: '14:25:24', kind: 'ok', text: '✓ 会议纪要已生成并归档（1 产物）' },
+          { id: 'tl0', time: '14:20:01', kind: 'sys', text: 'Loom Agent CLI v2.4.1\n研发工程师ADE · GLM-glm-5.3 · 研发工程师 · 会话模式（结算页灰度方案讨论）\n成员：shilu、wang、luyu', agentId: 'a1' },
+          { id: 'ta0', time: '14:20:01', kind: 'sys', text: 'Loom Agent CLI v2.4.1\n测试工程师ADE · qwen3.8-max · 测试工程师 · 会话模式（结算页灰度方案讨论）', agentId: 'a2' },
+          { id: 'tl1', time: '14:21:10', kind: 'prompt', text: '结算页这次想走灰度发布，两位怎么看范围？', agentId: 'a1' },
+          { id: 'tl2', time: '14:21:11', kind: 'think', text: '用户发起方案讨论，先检索结算页现状与灰度相关配置', agentId: 'a1' },
+          { id: 'tl3', time: '14:21:12', kind: 'tool', text: 'fs(read) -- src/pages/checkout/**', agentId: 'a1' },
+          { id: 'tl4', time: '14:21:13', kind: 'file', text: 'src/pages/checkout/index.tsx（读取 218 行）\n// 结算页入口 · 支付渠道配置\ngate: { enabled: false }', agentId: 'a1' },
+          { id: 'tl5', time: '14:22:40', kind: 'think', text: '读取网关路由配置，确认按比例路由能力', agentId: 'a1' },
+          { id: 'tl6', time: '14:22:41', kind: 'tool', text: 'gateway(query) -- 路由策略', agentId: 'a1' },
+          { id: 'tl7', time: '14:22:41', kind: 'out', text: 'gray-route: enabled · strategies [percent, region] · 当前命中 0%', agentId: 'a1' },
+          // 测试 ADE 桶：灰度回归用例准备（并行参与）
+          { id: 'ta1', time: '14:23:30', kind: 'think', text: '灰度方案讨论启动，准备 10% 流量下的回归用例与观察指标', agentId: 'a2' },
+          { id: 'ta2', time: '14:23:31', kind: 'tool', text: 'kb(search) -- "结算页 回归用例 支付成功率"', agentId: 'a2' },
+          { id: 'ta3', time: '14:23:32', kind: 'out', text: '命中 2 篇：checkout-regression.md · payment-metrics.md', agentId: 'a2' },
+          { id: 'ta4', time: '14:23:33', kind: 'file', text: 'tests/checkout/regression.spec.ts（读取 96 行）\n// 结算页回归用例 · 42 条\ndescribe("灰度 10% 流量", () => { … })', agentId: 'a2' },
+          { id: 'ta5', time: '14:24:20', kind: 'cmd', text: 'npm run test:checkout -- --grep "灰度"', agentId: 'a2' },
+          { id: 'ta6', time: '14:24:21', kind: 'out', text: '用例匹配 8 条 · 全部通过 · 覆盖支付成功率埋点 3 处', agentId: 'a2' },
+          { id: 'ta7', time: '14:24:40', kind: 'ok', text: '✓ 灰度回归用例就绪（8 条匹配 · 观察指标已确认）', agentId: 'a2' },
+          { id: 'tl8', time: '14:23:02', kind: 'prompt', text: '建议先放 10% 流量观察支付成功率。', agentId: 'a1' },
+          { id: 'tl9', time: '14:24:35', kind: 'prompt', text: '后端网关已支持按比例路由，没问题。', agentId: 'a1' },
+          { id: 'tl10', time: '14:25:20', kind: 'prompt', text: '好，那按 10% 起步，周五观察一天再扩。', agentId: 'a1' },
+          { id: 'tl11', time: '14:25:21', kind: 'think', text: '结论已收敛，生成会议纪要并归档', agentId: 'a1' },
+          { id: 'tl12', time: '14:25:23', kind: 'tool', text: 'fs(write) -- minutes/结算页灰度方案-1011.md', agentId: 'a1' },
+          { id: 'tl13', time: '14:25:23', kind: 'file', text: 'minutes/结算页灰度方案-1011.md（写入 0.9 KB）\n# 结算页灰度方案\n- 灰度起步：10% 流量\n- 观察指标：支付成功率\n- 扩量节奏：周五观察一天后评估', agentId: 'a1' },
+          { id: 'tl14', time: '14:25:24', kind: 'ok', text: '✓ 会议纪要已生成并归档（1 产物）', agentId: 'a1' },
         ],
       },
       {
@@ -844,14 +900,14 @@ export const projects: Project[] = [
           { id: 'sm3', role: 'ADE', text: '按「是否依赖组件状态」划分：依赖状态/hook 生命周期的放 hooks，纯函数放 utils。', time: '10:03:30', sender: { name: '研发工程师ADE', initial: 'A', color: '#7c66d8' } },
         ],
         logs: [
-          { id: 'tl0', time: '10:02:01', kind: 'sys', text: 'Loom Agent CLI v2.4.1\nresearch-engineer-ade · GLM-glm-5.3 · 会话模式（规范答疑）' },
-          { id: 'tl1', time: '10:03:15', kind: 'prompt', text: 'hooks 和 utils 怎么划分边界？' },
-          { id: 'tl2', time: '10:03:16', kind: 'think', text: '规范类问题，先检索项目知识库中的结构约定' },
-          { id: 'tl3', time: '10:03:16', kind: 'tool', text: 'kb(search) -- "目录结构 hooks utils"' },
-          { id: 'tl4', time: '10:03:17', kind: 'out', text: '命中 1 篇：工程结构规范.md（2 处相关）' },
-          { id: 'tl5', time: '10:03:18', kind: 'tool', text: 'fs(read) -- docs/工程结构规范.md' },
-          { id: 'tl6', time: '10:03:18', kind: 'file', text: 'docs/工程结构规范.md（读取 3.4 KB）\n「src/hooks：与组件状态/hook 生命周期相关的逻辑\n  src/utils：无状态纯函数，可单测」' },
-          { id: 'tl7', time: '10:03:30', kind: 'ok', text: '✓ 已回复（引用 1 条规范）' },
+          { id: 'tl0', time: '10:02:01', kind: 'sys', text: 'Loom Agent CLI v2.4.1\n研发工程师ADE · GLM-glm-5.3 · 会话模式（规范答疑）', agentId: 'a1' },
+          { id: 'tl1', time: '10:03:15', kind: 'prompt', text: 'hooks 和 utils 怎么划分边界？', agentId: 'a1' },
+          { id: 'tl2', time: '10:03:16', kind: 'think', text: '规范类问题，先检索项目知识库中的结构约定', agentId: 'a1' },
+          { id: 'tl3', time: '10:03:16', kind: 'tool', text: 'kb(search) -- "目录结构 hooks utils"', agentId: 'a1' },
+          { id: 'tl4', time: '10:03:17', kind: 'out', text: '命中 1 篇：工程结构规范.md（2 处相关）', agentId: 'a1' },
+          { id: 'tl5', time: '10:03:18', kind: 'tool', text: 'fs(read) -- docs/工程结构规范.md', agentId: 'a1' },
+          { id: 'tl6', time: '10:03:18', kind: 'file', text: 'docs/工程结构规范.md（读取 3.4 KB）\n「src/hooks：与组件状态/hook 生命周期相关的逻辑\n  src/utils：无状态纯函数，可单测」', agentId: 'a1' },
+          { id: 'tl7', time: '10:03:30', kind: 'ok', text: '✓ 已回复（引用 1 条规范）', agentId: 'a1' },
         ],
       },
     ],

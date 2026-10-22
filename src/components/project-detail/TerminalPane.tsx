@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Project, ProjectSession, TerminalLog } from '../../data/projects'
-import { runLogsOf } from '../../data/projects'
+import { logAgentIdOf, runLogsOf } from '../../data/projects'
 import { isActiveRun } from '../../hooks/useAutomationEngine'
 import './TerminalPane.css'
 
@@ -8,6 +8,12 @@ interface TerminalPaneProps {
   project: Project
   /** 当前会话（格 1/2/3 共享，状态在 ProjectDetail） */
   activeSession: ProjectSession | null
+  /** 当前选中 ADE（多 agent tab 状态在 ProjectDetail，与格 2 插话共享） */
+  activeAgentId: string | null
+  /** 切换 ADE tab */
+  onSelectAgent: (agentId: string) => void
+  /** 更新项目数据（manual 会话清空轨迹） */
+  onUpdateProject: (projectId: string, updater: (p: Project) => Project) => void
 }
 
 /** auto 会话当前运行（无 = 历史） */
@@ -31,29 +37,57 @@ const KIND_PREFIX: Partial<Record<TerminalLog['kind'], string>> = {
  * 格 3：Agent CLI 模式——还原 agent loop 的完整操作轨迹。
  * auto 会话从 run.messages 派生（思考/工具调用/命令/原始输出/文件读写）；
  * manual 会话读 session.logs（插话联动 append prompt/think 行）。
+ * 多 ADE 项目头部下有 agent tab 层：每个 agent 一个独立 CLI 轨迹桶。
  */
-export default function TerminalPane({ project, activeSession }: TerminalPaneProps) {
+export default function TerminalPane({
+  project, activeSession, activeAgentId, onSelectAgent, onUpdateProject,
+}: TerminalPaneProps) {
   const bodyRef = useRef<HTMLDivElement>(null)
   const stickBottom = useRef(true)
+  /** 清空确认态（manual 会话专用；auto 轨迹跟随运行不可截断） */
+  const [confirmingClear, setConfirmingClear] = useState(false)
 
   const run = activeRunOf(project, activeSession)
   const isAuto = activeSession?.source === 'auto'
-  /** auto 会话轨迹实时派生；manual 读 session.logs */
+  const agents = project.agents
+  /** auto 会话轨迹实时派生（按 agent 打标）；manual 读 session.logs */
   const logs: TerminalLog[] = useMemo(
-    () => (isAuto ? runLogsOf(run) : activeSession?.logs ?? []),
-    [isAuto, run, activeSession],
+    () => (isAuto ? runLogsOf(run, agents) : activeSession?.logs ?? []),
+    [isAuto, run, agents, activeSession],
+  )
+  /** 当前 agent 的轨迹桶（log.agentId 缺省归主 agent） */
+  const activeLogs = useMemo(
+    () => logs.filter((l) => logAgentIdOf(l, agents) === activeAgentId),
+    [logs, agents, activeAgentId],
   )
 
   // 吸底跟随（仅当已处于底部时）
   useEffect(() => {
     const el = bodyRef.current
     if (el && stickBottom.current) el.scrollTop = el.scrollHeight
-  }, [logs.length, activeSession?.id])
+  }, [activeLogs.length, activeSession?.id])
 
   const handleScroll = () => {
     const el = bodyRef.current
     if (!el) return
     stickBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+  }
+
+  /** 清空 manual 会话当前 agent 的轨迹（其他 agent 桶保留） */
+  const handleClear = () => {
+    if (!activeSession || isAuto) return
+    if (!confirmingClear) {
+      setConfirmingClear(true)
+      return
+    }
+    onUpdateProject(project.id, (p) => ({
+      ...p,
+      sessions: p.sessions.map((s) => (s.id === activeSession.id
+        ? { ...s, logs: (s.logs ?? []).filter((l) => logAgentIdOf(l, agents) !== activeAgentId) }
+        : s)),
+    }))
+    setConfirmingClear(false)
+    stickBottom.current = true
   }
 
   const running = isAuto && isActiveRun(run)
@@ -85,11 +119,43 @@ export default function TerminalPane({ project, activeSession }: TerminalPanePro
       <div className="term-head">
         <span className="term-title">Agent CLI</span>
         {activeSession && <span className="term-sess" title={activeSession.name}>{activeSession.name}</span>}
+        {activeSession && !isAuto && (
+          <button
+            type="button"
+            className={`term-clear-btn${confirmingClear ? ' confirm' : ''}`}
+            onClick={handleClear}
+            title="清空当前 agent 的本会话轨迹"
+          >
+            {confirmingClear ? '确认清空' : '清空'}
+          </button>
+        )}
         {running && <span className="term-running-dot" title="agent loop 运行中，轨迹实时增长" />}
       </div>
+      {/* agent tab 层：多 ADE 项目显示（每个 agent 一个 CLI 实例） */}
+      {agents.length > 1 && (
+        <div className="term-agent-tabs" role="tablist" aria-label="ADE 轨迹切换">
+          {agents.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              role="tab"
+              aria-selected={a.id === activeAgentId}
+              className={`term-agent-tab${a.id === activeAgentId ? ' active' : ''}`}
+              title={`${a.name} · ${a.role} · ${a.model}${a.status === '工作中' ? ` · 工作中：${a.currentTask}` : ''}`}
+              onClick={() => onSelectAgent(a.id)}
+            >
+              <span
+                className={`term-agent-dot${a.status === '工作中' ? ' busy' : ''}`}
+                title={a.status === '工作中' ? '工作中' : '空闲'}
+              />
+              <span className="term-agent-name">{a.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="term-body" ref={bodyRef} onScroll={handleScroll}>
-        {logs.length > 0 ? (
-          logs.map(renderLog)
+        {activeLogs.length > 0 ? (
+          activeLogs.map(renderLog)
         ) : (
           <div className="term-line term-empty">
             <div className="term-row">

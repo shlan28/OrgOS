@@ -54,6 +54,75 @@
   50% { opacity: 0.25; }
 }
 
+/* ===== agent tab 层（多 ADE 项目：头部下 30px，每 agent 一个 CLI 实例） ===== */
+
+.term-agent-tabs {
+  height: 30px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  overflow-x: auto;
+  scrollbar-width: none; /* tab 多时不撑爆，横向静默滚动 */
+}
+
+.term-agent-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.term-agent-tab {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+  /* 底部留 2px 给选中指示条（盖住 tab 条 border） */
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+}
+
+.term-agent-tab:hover {
+  color: var(--text-primary);
+}
+
+.term-agent-tab.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: #3a8fae;
+}
+
+/* 状态点：工作中 = 绿呼吸（与头部运行点同款动效）；空闲 = 灰 */
+.term-agent-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c2c5ca;
+  flex-shrink: 0;
+}
+
+.term-agent-dot.busy {
+  background: var(--status-success);
+  animation: term-dot-blink 1.6s ease-in-out infinite;
+}
+
+.term-agent-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 终端区：白底 mono（与格子语言一致） */
 .term-body {
   flex: 1;

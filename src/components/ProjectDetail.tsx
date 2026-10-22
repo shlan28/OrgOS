@@ -90,6 +90,14 @@ export default function ProjectDetail({
     [...project.sessions].sort((a, b) => b.order - a.order)[0]?.id ?? null
   )
   const activeSession = project.sessions.find((s) => s.id === activeSessionId) ?? null
+  // —— 当前选中 ADE（格 2 插话归属 / 格 3 agent tab 共享；默认主 agent） ——
+  const [activeAgentId, setActiveAgentId] = useState<string | null>(project.agents[0]?.id ?? null)
+  // 选中 agent 被移除或切项目后不存在时，兜底回主 agent
+  useEffect(() => {
+    if (activeAgentId && !project.agents.some((a) => a.id === activeAgentId)) {
+      setActiveAgentId(project.agents[0]?.id ?? null)
+    }
+  }, [project.agents, activeAgentId])
   // auto 会话关联的任务（消息/日志实时取 run）
   const job = activeSession?.source === 'auto' && activeSession.jobId
     ? project.autoJobs.find((j) => j.id === activeSession.jobId) ?? null
@@ -417,6 +425,7 @@ export default function ProjectDetail({
             project={project}
             activeSession={activeSession}
             job={job}
+            activeAgentId={activeAgentId}
             onUpdateProject={onUpdateProject}
             engine={engine}
           />
@@ -426,6 +435,9 @@ export default function ProjectDetail({
           <TerminalPane
             project={project}
             activeSession={activeSession}
+            activeAgentId={activeAgentId}
+            onSelectAgent={(id) => setActiveAgentId(id)}
+            onUpdateProject={onUpdateProject}
           />
         </div>
         {renderResizer(2)}
