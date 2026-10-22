@@ -488,50 +488,100 @@ export interface Knowledge {
 
 /* —— 项目会话（详情页格 1 会话列表） —— */
 
-/** Terminal 日志行（agent 工具调用日志，详情页格 3） */
+/* —— Agent CLI 轨迹（详情页格 3：agent loop 的终端还原） —— */
+
+/**
+ * Terminal 行（agent CLI 模式）：还原 agent loop 的完整操作轨迹。
+ * kind 分类：
+ * - sys    系统横幅（会话启动，双线框样式，text 用 \n 分多行）
+ * - prompt 用户/调度输入（❯ 提示符，青蓝加粗）
+ * - think  agent 思考输出（灰色斜体，前缀「◦」）
+ * - cmd    执行的 shell 命令（❯ 提示符）
+ * - out    命令/工具原始输出（text 用 \n 分多行）
+ * - file   文件读写块（▸ 前缀，路径 + 内容预览）
+ * - tool   工具调用（⚡ 前缀 + 工具名 + 参数）
+ * - ok     成功结果（✓ 绿）
+ * - err    失败/错误（✗ 红）
+ * - info   阶段提示（▸ 蓝）
+ */
 export interface TerminalLog {
   id: string
   /** HH:mm:ss 时间戳 */
   time: string
-  /** cmd = 命令行（❯ 提示符）/ out = 普通输出 / ok = 成功（绿）/ err = 失败（红）/ info = 事件（蓝） */
-  kind: 'cmd' | 'out' | 'ok' | 'err' | 'info'
+  kind: 'sys' | 'prompt' | 'think' | 'cmd' | 'out' | 'file' | 'tool' | 'ok' | 'err' | 'info'
+  /** 多行内容用 \n 分隔（out/sys/file 支持） */
   text: string
 }
 
-/** auto 会话工具日志：从 run.messages 实时派生（引擎零改动，推进时自动增长） */
+const tl = (id: string, time: string, kind: TerminalLog['kind'], text: string): TerminalLog =>
+  ({ id, time, kind, text })
+
+/**
+ * auto 会话 CLI 轨迹：从 run.messages 派生 agent loop 展开态。
+ * 每条消息展开为多行（思考 → 工具调用 → 命令 → 原始输出 → 结果），
+ * 还原「在终端里看 agent 干活」的观感；引擎推进时自动增长。
+ */
 export function runLogsOf(run: JobRun | undefined): TerminalLog[] {
   if (!run) return []
   const logs: TerminalLog[] = []
-  run.messages.forEach((m, i) => {
-    const id = `${run.id}-${i}`
-    const time = m.time || run.startedAt
+  let seq = 0
+  const nid = () => `${run.id}-t${seq++}`
+
+  logs.push(tl(nid(), '08:00:00', 'sys', 'Loom Agent CLI v2.4.1\nresearch-engineer-ade · GLM-glm-5.3 · workdir ~/workspace/loomweb'))
+  logs.push(tl(nid(), '08:00:00', 'info', `▸ 装载任务 ${run.jobId}，恢复运行上下文`))
+
+  run.messages.forEach((m) => {
+    const time = m.time || '08:00:00'
     if (m.role === '系统') {
-      logs.push({ id, time, kind: 'info', text: `▸ ${m.text}` })
+      logs.push(tl(nid(), time, 'info', `▸ ${m.text}`))
     } else if (m.role === '人') {
-      logs.push({ id, time, kind: 'cmd', text: `ask "${m.text}"` })
-    } else {
-      // ADE：开始执行 → cmd + 底层命令 out；带 result 的完成 → ok + 产物；Gate/其他 → out
-      if (m.text.startsWith('开始执行：')) {
-        const step = m.text.slice('开始执行：'.length)
-        logs.push({ id, time, kind: 'cmd', text: `tool:step --name "${step}"` })
-        // 步骤名 → 底层命令 Mock（terminal 观感）
-        if (step.includes('拉取')) logs.push({ id: `${id}-c`, time, kind: 'out', text: 'git fetch --depth=1 origin dev && git reset --hard origin/dev' })
-        else if (step.includes('安装') || step.includes('依赖')) logs.push({ id: `${id}-c`, time, kind: 'out', text: 'npm ci --prefer-offline' })
-        else if (step.includes('测试')) logs.push({ id: `${id}-c`, time, kind: 'out', text: 'npm test -- --coverage --runInBand' })
-        else if (step.includes('构建') || step.includes('打包')) logs.push({ id: `${id}-c`, time, kind: 'out', text: 'npm run build -- --mode production' })
-        else if (step.includes('检查') || step.includes('静态')) logs.push({ id: `${id}-c`, time, kind: 'out', text: 'npm run lint -- --max-warnings 0' })
-        else logs.push({ id: `${id}-c`, time, kind: 'out', text: `ade run ${step}` })
-      } else if (m.result) {
-        const files = m.result.files.length > 0 ? `（${m.result.files.length} 产物）` : ''
-        logs.push({ id, time, kind: 'ok', text: `✓ ${m.text}${files}` })
-        m.result.files.forEach((f, fi) => {
-          logs.push({ id: `${id}-f${fi}`, time, kind: 'out', text: `  ↳ ${f.name}` })
-        })
-      } else if (m.actions) {
-        logs.push({ id, time, kind: 'info', text: `▸ ${m.text}` })
+      logs.push(tl(nid(), time, 'prompt', m.text))
+      logs.push(tl(nid(), time, 'think', `收到指令，解析意图并规划动作`))
+    } else if (m.text.startsWith('开始执行：')) {
+      const step = m.text.slice('开始执行：'.length)
+      logs.push(tl(nid(), time, 'think', `进入步骤「${step}」，选择工具与命令序列`))
+      if (step.includes('拉取')) {
+        logs.push(tl(nid(), time, 'tool', 'git(repos) --action sync --branch dev'))
+        logs.push(tl(nid(), time, 'cmd', 'git fetch --depth=1 origin dev && git reset --hard origin/dev'))
+        logs.push(tl(nid(), time, 'out', 'From https://gitlab.aicoda.tech/fe/loomweb\n * branch  dev -> FETCH_HEAD\nHEAD is now at 9f2c1ab refactor: 登录模块状态收敛'))
+      } else if (step.includes('安装') || step.includes('依赖')) {
+        logs.push(tl(nid(), time, 'cmd', 'npm ci --prefer-offline'))
+        logs.push(tl(nid(), time, 'out', 'added 312 packages in 18s\nfound 0 vulnerabilities'))
+      } else if (step.includes('测试')) {
+        logs.push(tl(nid(), time, 'tool', 'shell(exec) -- npm test'))
+        logs.push(tl(nid(), time, 'cmd', 'npm test -- --coverage --runInBand'))
+        logs.push(tl(nid(), time, 'out', 'PASS src/utils/__tests__/format.test.ts (12)\nPASS src/hooks/__tests__/useSession.test.ts (18)\nPASS src/components/__tests__/ChatInput.test.tsx (28)\n\nTests: 58 passed, 58 total\nCoverage: 87.4% statements'))
+      } else if (step.includes('构建') || step.includes('打包')) {
+        logs.push(tl(nid(), time, 'cmd', 'npm run build -- --mode production'))
+        logs.push(tl(nid(), time, 'out', 'vite v5.4.21 building for production...\n✓ 123 modules transformed\ndist/index.html        0.39 kB\ndist/assets/app.js   182.4 kB │ gzip: 58.9 kB\ndist/assets/app.css   24.2 kB │ gzip: 5.1 kB\n✓ built in 1.73s'))
+      } else if (step.includes('检查') || step.includes('静态')) {
+        logs.push(tl(nid(), time, 'cmd', 'npm run lint -- --max-warnings 0'))
+        logs.push(tl(nid(), time, 'out', '✖ 3 problems (0 errors, 3 warnings)\n  src/utils/date.ts:42  no-unused-var\n  src/App.tsx:88       no-unused-var\n  src/main.tsx:12      no-console'))
+      } else if (step.includes('汇总')) {
+        logs.push(tl(nid(), time, 'tool', 'gitlab(mr.list) --state merged --range 7d'))
+        logs.push(tl(nid(), time, 'out', 'merged MRs: 12 · issues closed: 8 · commits: 47'))
+        logs.push(tl(nid(), time, 'tool', 'fs(write) -- data/summary.json'))
+        logs.push(tl(nid(), time, 'file', 'data/summary.json（写入 1.2 KB）\n{ "mrs": 12, "issues": 8, "commits": 47, "hotFiles": ["src/App.tsx"] }'))
+      } else if (step.includes('周报') || step.includes('生成')) {
+        logs.push(tl(nid(), time, 'tool', 'kb(search) -- "周报模板 进展 风险"'))
+        logs.push(tl(nid(), time, 'out', '命中 1 个模板：weekly-standard.md'))
+        logs.push(tl(nid(), time, 'file', 'weekly-report-0828.md（草稿 · 6 章节）\n# 本周进展 · Loom Web\n## 进展\n- 四格布局详情页落地（+1,842 行）\n## 风险\n- 结算页灰度需网关配置确认'))
+      } else if (step.includes('发布') || step.includes('归档')) {
+        logs.push(tl(nid(), time, 'tool', 'shell(exec) -- ade release prepare'))
+        logs.push(tl(nid(), time, 'out', 'checksum verified · 42 files staged'))
       } else {
-        logs.push({ id, time, kind: 'out', text: m.text })
+        logs.push(tl(nid(), time, 'cmd', `ade run ${step}`))
       }
+    } else if (m.result) {
+      logs.push(tl(nid(), time, 'ok', `${m.text} ${m.result.summary}`))
+      m.result.files.forEach((f) => {
+        logs.push(tl(nid(), time, 'file', `${f.name}（产物已归档）`))
+      })
+    } else if (m.actions) {
+      logs.push(tl(nid(), time, 'info', `▸ ${m.text}`))
+      logs.push(tl(nid(), time, 'think', 'agent loop 暂停，等待人工确认后继续'))
+    } else {
+      logs.push(tl(nid(), time, 'out', m.text))
     }
   })
   return logs
@@ -769,18 +819,21 @@ export const projects: Project[] = [
           { id: 'sm5', role: '人', text: '好，那按 10% 起步，周五观察一天再扩。', time: '14:25:20', sender: { name: 'shilu', initial: 'S', color: '#5b7ba6' } },
         ],
         logs: [
-          { id: 'tl1', time: '14:20:01', kind: 'info', text: '▸ 会话创建于 10-11 14:20，成员：shilu、wang、luyu' },
-          { id: 'tl2', time: '14:21:10', kind: 'cmd', text: 'ask "结算页这次想走灰度发布，两位怎么看范围？"' },
-          { id: 'tl3', time: '14:21:12', kind: 'out', text: '已通知会话成员：wang、luyu' },
-          { id: 'tl4', time: '14:22:40', kind: 'cmd', text: 'tool:context --load 结算页模块' },
-          { id: 'tl5', time: '14:22:41', kind: 'out', text: '读取 checkout/ 目录：12 个文件（1,842 行）' },
-          { id: 'tl6', time: '14:23:02', kind: 'cmd', text: 'ask "建议先放 10% 流量观察支付成功率。"' },
-          { id: 'tl7', time: '14:24:35', kind: 'cmd', text: 'ask "后端网关已支持按比例路由，没问题。"' },
-          { id: 'tl8', time: '14:24:40', kind: 'cmd', text: 'tool:gateway --query 路由配置' },
-          { id: 'tl9', time: '14:24:41', kind: 'out', text: 'gray-route: enabled · strategies [percent, region]' },
-          { id: 'tl10', time: '14:25:20', kind: 'cmd', text: 'ask "好，那按 10% 起步，周五观察一天再扩。"' },
-          { id: 'tl11', time: '14:25:24', kind: 'ok', text: '✓ 已生成会议纪要（1 产物）' },
-          { id: 'tl12', time: '14:25:24', kind: 'out', text: '  ↳ minutes/结算页灰度方案-1011.md' },
+          { id: 'tl0', time: '14:20:01', kind: 'sys', text: 'Loom Agent CLI v2.4.1\nresearch-engineer-ade · GLM-glm-5.3 · 会话模式（结算页灰度方案讨论）\n成员：shilu、wang、luyu' },
+          { id: 'tl1', time: '14:21:10', kind: 'prompt', text: '结算页这次想走灰度发布，两位怎么看范围？' },
+          { id: 'tl2', time: '14:21:11', kind: 'think', text: '用户发起方案讨论，先检索结算页现状与灰度相关配置' },
+          { id: 'tl3', time: '14:21:12', kind: 'tool', text: 'fs(read) -- src/pages/checkout/**' },
+          { id: 'tl4', time: '14:21:13', kind: 'file', text: 'src/pages/checkout/index.tsx（读取 218 行）\n// 结算页入口 · 支付渠道配置\ngate: { enabled: false }' },
+          { id: 'tl5', time: '14:22:40', kind: 'think', text: '读取网关路由配置，确认按比例路由能力' },
+          { id: 'tl6', time: '14:22:41', kind: 'tool', text: 'gateway(query) -- 路由策略' },
+          { id: 'tl7', time: '14:22:41', kind: 'out', text: 'gray-route: enabled · strategies [percent, region] · 当前命中 0%' },
+          { id: 'tl8', time: '14:23:02', kind: 'prompt', text: '建议先放 10% 流量观察支付成功率。' },
+          { id: 'tl9', time: '14:24:35', kind: 'prompt', text: '后端网关已支持按比例路由，没问题。' },
+          { id: 'tl10', time: '14:25:20', kind: 'prompt', text: '好，那按 10% 起步，周五观察一天再扩。' },
+          { id: 'tl11', time: '14:25:21', kind: 'think', text: '结论已收敛，生成会议纪要并归档' },
+          { id: 'tl12', time: '14:25:23', kind: 'tool', text: 'fs(write) -- minutes/结算页灰度方案-1011.md' },
+          { id: 'tl13', time: '14:25:23', kind: 'file', text: 'minutes/结算页灰度方案-1011.md（写入 0.9 KB）\n# 结算页灰度方案\n- 灰度起步：10% 流量\n- 观察指标：支付成功率\n- 扩量节奏：周五观察一天后评估' },
+          { id: 'tl14', time: '14:25:24', kind: 'ok', text: '✓ 会议纪要已生成并归档（1 产物）' },
         ],
       },
       {
@@ -791,12 +844,13 @@ export const projects: Project[] = [
           { id: 'sm3', role: 'ADE', text: '按「是否依赖组件状态」划分：依赖状态/hook 生命周期的放 hooks，纯函数放 utils。', time: '10:03:30', sender: { name: '研发工程师ADE', initial: 'A', color: '#7c66d8' } },
         ],
         logs: [
-          { id: 'tl1', time: '10:02:01', kind: 'info', text: '▸ 会话创建于 09-14 10:02' },
-          { id: 'tl2', time: '10:03:15', kind: 'cmd', text: 'ask "hooks 和 utils 怎么划分边界？"' },
-          { id: 'tl3', time: '10:03:16', kind: 'cmd', text: 'tool:kb --search "目录结构 hooks utils"' },
-          { id: 'tl4', time: '10:03:17', kind: 'out', text: '检索项目规范：工程结构规范.md（2 命中）' },
-          { id: 'tl5', time: '10:03:18', kind: 'cmd', text: 'tool:fs --read docs/工程结构规范.md' },
-          { id: 'tl6', time: '10:03:19', kind: 'out', text: '「src/hooks：组件状态相关；src/utils：纯函数」' },
+          { id: 'tl0', time: '10:02:01', kind: 'sys', text: 'Loom Agent CLI v2.4.1\nresearch-engineer-ade · GLM-glm-5.3 · 会话模式（规范答疑）' },
+          { id: 'tl1', time: '10:03:15', kind: 'prompt', text: 'hooks 和 utils 怎么划分边界？' },
+          { id: 'tl2', time: '10:03:16', kind: 'think', text: '规范类问题，先检索项目知识库中的结构约定' },
+          { id: 'tl3', time: '10:03:16', kind: 'tool', text: 'kb(search) -- "目录结构 hooks utils"' },
+          { id: 'tl4', time: '10:03:17', kind: 'out', text: '命中 1 篇：工程结构规范.md（2 处相关）' },
+          { id: 'tl5', time: '10:03:18', kind: 'tool', text: 'fs(read) -- docs/工程结构规范.md' },
+          { id: 'tl6', time: '10:03:18', kind: 'file', text: 'docs/工程结构规范.md（读取 3.4 KB）\n「src/hooks：与组件状态/hook 生命周期相关的逻辑\n  src/utils：无状态纯函数，可单测」' },
           { id: 'tl7', time: '10:03:30', kind: 'ok', text: '✓ 已回复（引用 1 条规范）' },
         ],
       },

@@ -447,6 +447,6 @@ body {
 }
 
 .kv-value.mono {
-  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', 'Noto Sans Mono CJK TC', monospace;
   font-size: 12.5px;
 }

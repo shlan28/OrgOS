@@ -117,7 +117,7 @@ export default function ChatPane({
     }
 
     const time = nowTime()
-    // 手动会话：append 人消息 + ❯ 命令行日志（同一次更新事务）
+    // 手动会话：append 人消息 + agent CLI 轨迹行（同一次更新事务）
     const humanMsg: RunMessage = {
       id: msgId(), role: '人', text, time,
       sender: { name: CURRENT_USER.name, initial: CURRENT_USER.initial, color: CURRENT_USER.color },
@@ -127,7 +127,7 @@ export default function ChatPane({
       sessions: p.sessions.map((s) => (s.id === activeSession.id ? {
         ...s,
         messages: [...s.messages, humanMsg],
-        logs: [...(s.logs ?? []), { id: msgId(), time, kind: 'cmd' as const, text: `ask "${text}"` }],
+        logs: [...(s.logs ?? []), { id: msgId(), time, kind: 'prompt' as const, text }],
       } : s)),
     }))
 
@@ -144,7 +144,7 @@ export default function ChatPane({
         sessions: p.sessions.map((s) => (s.id === activeSession.id ? {
           ...s,
           messages: [...s.messages, adeMsg],
-          logs: [...(s.logs ?? []), { id: msgId(), time: replyTime, kind: 'out' as const, text: '已将消息作为新任务指令排队执行' }],
+          logs: [...(s.logs ?? []), { id: msgId(), time: replyTime, kind: 'think' as const, text: '空闲会话指令已入队，等待调度执行' }],
         } : s)),
       }))
     }, MANUAL_REPLY_DELAY)

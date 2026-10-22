@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react'
-import type { Member, Project, ProjectFolder, ProjectSession } from '../data/projects'
-import { CURRENT_USER, memberColorOf } from '../data/projects'
+import type { AdeAgent, Member, Project, ProjectFolder, ProjectSession } from '../data/projects'
+import { CURRENT_USER, memberColorOf, ADE_LLM_BASES, createDefaultAdeConfig } from '../data/projects'
 import FormModal, { ModalField } from './FormModal'
 import SpecsPanel from './project-detail/SpecsPanel'
 import CodePanel from './project-detail/CodePanel'
-import AgentsPanel from './project-detail/AgentsPanel'
 import KnowledgePanel from './project-detail/KnowledgePanel'
-import AutomationPanel from './project-detail/AutomationPanel'
 import EfficiencyPanel from './project-detail/EfficiencyPanel'
 import SecurityPanel from './project-detail/SecurityPanel'
 import CodeReviewPanel from './project-detail/CodeReviewPanel'
 import WorkflowPanel from './project-detail/WorkflowPanel'
 import RunModal from './project-detail/RunModal'
+import AdeSettingsModal from './project-detail/AdeSettingsModal'
 import PlaceholderPanel from './PlaceholderPanel'
 import ChatPane from './project-detail/ChatPane'
 import SessionRail from './project-detail/SessionRail'
@@ -20,20 +19,19 @@ import ClosableTabs, { type TabItem } from './project-detail/ClosableTabs'
 import { useResizableColumns } from '../hooks/useResizableColumns'
 import type { AutomationEngine } from '../hooks/useAutomationEngine'
 import {
-  DocIcon, CodeIcon, RobotIcon,
-  BookIcon, GearIcon, ShieldIcon, FlaskIcon, ChartIcon, ChecklistIcon, WorkflowIcon,
+  DocIcon, CodeIcon,
+  BookIcon, ShieldIcon, FlaskIcon, ChartIcon, ChecklistIcon, WorkflowIcon,
 } from './icons'
+import StatusBadge from './StatusBadge'
 import './ProjectDetail.css'
 
-type NavKey = 'specs' | 'code' | 'agents' | 'knowledge' | 'automation' | 'workflow' | 'efficiency' | 'codereview' | 'security' | 'testing'
+type NavKey = 'specs' | 'code' | 'knowledge' | 'workflow' | 'efficiency' | 'codereview' | 'security' | 'testing'
 
-/** 格 4 tab 元数据（10 项；项目成员在格 2 成员抽屉） */
+/** 格 4 tab 元数据（8 项；项目成员/ADE 管理在编辑项目弹窗，自动化任务面板移除） */
 const TAB_ITEMS: TabItem[] = [
   { key: 'specs', label: '项目规范', icon: (s) => <DocIcon size={s} /> },
   { key: 'code', label: '代码', icon: (s) => <CodeIcon size={s} /> },
-  { key: 'agents', label: '项目ADE', icon: (s) => <RobotIcon size={s} /> },
   { key: 'knowledge', label: '知识记忆', icon: (s) => <BookIcon size={s} /> },
-  { key: 'automation', label: '自动化任务', icon: (s) => <GearIcon size={s} /> },
   { key: 'workflow', label: '工作流', icon: (s) => <WorkflowIcon size={s} /> },
   { key: 'efficiency', label: '自动化统计', icon: (s) => <ChartIcon size={s} /> },
   { key: 'codereview', label: '代码审查', icon: (s) => <ChecklistIcon size={s} /> },
@@ -63,13 +61,12 @@ interface ProjectDetailProps {
   folders: ProjectFolder[]
   /** 各面板的写操作统一通过该回调更新项目数据（本地 state） */
   onUpdateProject: (projectId: string, updater: (p: Project) => Project) => void
-  /** 自动化运行引擎（自动化任务面板 / 会话区使用） */
+  /** 自动化运行引擎（工作流面板 / 会话区使用） */
   engine: AutomationEngine
-  /** 外部指定初始导航项（通知跳转直达 automation） */
+  /** 外部指定初始导航项（通知跳转直达 workflow） */
   initialNav?: NavKey
-  /** 通知跳转定位的任务 id */
+  /** 通知跳转定位的任务 id（切到对应会话） */
   focusJobId?: string | null
-  onClearFocus?: () => void
 }
 
 /** 格 1..3 定宽列（格 4 flex 吸收剩余） */
@@ -80,11 +77,11 @@ const COLUMN_SPECS = [
 ]
 
 /**
- * 项目详情页：四格布局（格 1 会话列表 / 格 2 会话详情 / 格 3 工具日志 / 格 4 工作流 tab）。
- * activeSessionId 状态在此（三格共享）；编辑项目弹窗留在此处。
+ * 项目详情页：四格布局（格 1 会话列表 / 格 2 会话详情 / 格 3 Agent CLI / 格 4 工作流 tab）。
+ * activeSessionId 状态在此（三格共享）；编辑项目弹窗（含成员 + ADE 管理）留在此处。
  */
 export default function ProjectDetail({
-  project, projects, folders, onUpdateProject, engine, initialNav, focusJobId, onClearFocus,
+  project, projects, folders, onUpdateProject, engine, initialNav, focusJobId,
 }: ProjectDetailProps) {
   // —— 当前会话（格 1/2/3 共享；默认 order 最大，无会话 null） ——
   const [activeSessionId, setActiveSessionId] = useState<string | null>(
@@ -110,6 +107,11 @@ export default function ProjectDetail({
   /** 成员添加/编辑弹窗（编辑项目弹窗内）：editId = null 表新增、有值表编辑 */
   const [memberModal, setMemberModal] = useState<'add' | { editId: string } | null>(null)
   const [memberForm, setMemberForm] = useState({ name: '', role: '', permission: '无' })
+  /** ADE 申请弹窗（编辑项目弹窗内） */
+  const [adeApplying, setAdeApplying] = useState(false)
+  const [adeForm, setAdeForm] = useState({ name: '', role: '' })
+  /** ADE 配置弹窗（点 ADE 行打开，复用 AdeSettingsModal） */
+  const [adeEditingId, setAdeEditingId] = useState<string | null>(null)
   /** 工作流 tab 打开的运行弹窗任务 id */
   const [wfModalJobId, setWfModalJobId] = useState<string | null>(null)
   /** 工作流「在会话格打开本步骤会话」请求（stamp 保证重复点击也触发） */
@@ -167,7 +169,7 @@ export default function ProjectDetail({
   }, [sessionFocus?.stamp])
 
   // 外部指定初始导航（如通知跳转）时同步：目标 tab 若已关闭先重开
-  // 注：focusJobId 变化（同项目内再次点击通知）时也强制回到 automation，即使用户已切到其他 tab
+  // 注：focusJobId 变化（同项目内再次点击通知）时也强制回到 workflow，即使用户已切到其他 tab
   useEffect(() => {
     if (!initialNav) return
     setOpenTabs((open) => (open.includes(initialNav) ? open : [...open, initialNav]))
@@ -284,10 +286,38 @@ export default function ProjectDetail({
     setMemberModal(null)
   }
 
-  /** 自动化任务待处理数（tab 徽标） */
-  const pendingCount = project.autoJobs.filter(
-    (j) => j.currentRun?.status === '等待确认' || j.currentRun?.status === '等待输入',
-  ).length
+  /* —— ADE 管理（编辑项目弹窗内：申请 / 配置弹窗 / 移除；迁自原「项目ADE」tab） —— */
+
+  const editingAgent = project.agents.find((a) => a.id === adeEditingId) ?? null
+
+  /** 申请专属 ADE（迁自 AgentsSegment.handleApply） */
+  const handleApplyAde = () => {
+    if (!adeForm.name.trim()) return
+    const a: AdeAgent = {
+      id: `a${Date.now()}`,
+      name: adeForm.name.trim(),
+      role: adeForm.role.trim() || '研发工程师',
+      model: ADE_LLM_BASES[0],
+      status: '空闲',
+      currentTask: '',
+      ...createDefaultAdeConfig(),
+    }
+    onUpdateProject(project.id, (p) => ({ ...p, agents: [...p.agents, a] }))
+    setAdeApplying(false)
+    setAdeForm({ name: '', role: '' })
+  }
+
+  /** 保存 ADE 配置（AdeSettingsModal 确定） */
+  const handleSaveAde = (next: AdeAgent) => {
+    onUpdateProject(project.id, (p) => ({ ...p, agents: p.agents.map((a) => (a.id === next.id ? next : a)) }))
+    setAdeEditingId(null)
+  }
+
+  /** 移除 ADE */
+  const handleRemoveAde = (id: string) => {
+    onUpdateProject(project.id, (p) => ({ ...p, agents: p.agents.filter((a) => a.id !== id) }))
+    setAdeEditingId(null)
+  }
 
   const renderPanel = () => {
     switch (activeTab) {
@@ -305,33 +335,11 @@ export default function ProjectDetail({
             onUpdateRepos={(repos) => onUpdateProject(project.id, (p) => ({ ...p, repos }))}
           />
         )
-      case 'agents':
-        return (
-          <AgentsPanel
-            agents={project.agents}
-            onUpdateAgents={(agents) => onUpdateProject(project.id, (p) => ({ ...p, agents }))}
-          />
-        )
       case 'knowledge':
         return (
           <KnowledgePanel
             knowledge={project.knowledge}
             onUpdateKnowledge={(knowledge) => onUpdateProject(project.id, (p) => ({ ...p, knowledge }))}
-          />
-        )
-      case 'automation':
-        return (
-          <AutomationPanel
-            jobs={project.autoJobs}
-            focusJobId={focusJobId}
-            onClearFocus={onClearFocus}
-            onUpdateJobs={(autoJobs) => onUpdateProject(project.id, (p) => ({ ...p, autoJobs }))}
-            onApprove={(jobId) => engine.approve(project.id, jobId)}
-            onReject={(jobId) => engine.reject(project.id, jobId)}
-            onSubmit={(jobId, values) => engine.submit(project.id, jobId, values)}
-            onCancelRun={(jobId) => engine.cancel(project.id, jobId)}
-            onTrigger={(jobId) => engine.trigger(project.id, jobId)}
-            onSendMessage={(jobId, text) => engine.sendMessage(project.id, jobId, text)}
           />
         )
       case 'workflow':
@@ -416,14 +424,13 @@ export default function ProjectDetail({
           <TerminalPane
             project={project}
             activeSession={activeSession}
-            onUpdateProject={onUpdateProject}
           />
         </div>
         {renderResizer(2)}
         {/* 格 4：项目配置（flex 吸收剩余宽度） */}
         <div className="detail-cell detail-config">
           <ClosableTabs
-            items={TAB_ITEMS.map((t) => (t.key === 'automation' ? { ...t, count: pendingCount } : t))}
+            items={TAB_ITEMS}
             openKeys={openTabs}
             activeKey={activeTab}
             closedKeys={closedTabs}
@@ -438,7 +445,7 @@ export default function ProjectDetail({
         </div>
       </div>
 
-      {/* 工作流 tab 打开的运行详情弹窗（与 AutomationPanel 的 RunModal 同源） */}
+      {/* 工作流 tab 打开的运行详情弹窗（RunModal） */}
       {wfModalJobId && wfModalJob && (
         <RunModal
           job={wfModalJob}
@@ -452,7 +459,7 @@ export default function ProjectDetail({
         />
       )}
 
-      {/* 编辑项目弹窗（字段与新建项目弹窗对齐，预填当前值） */}
+      {/* 编辑项目弹窗（字段与新建项目弹窗对齐，预填当前值；含项目成员 + 项目 ADE 区块） */}
       {editing && (
         <FormModal
           title="编辑项目"
@@ -460,6 +467,7 @@ export default function ProjectDetail({
           confirmDisabled={editDisabled}
           onConfirm={handleSaveEdit}
           onClose={() => setEditing(false)}
+          wide
         >
           <ModalField label="项目名">
             <input
@@ -552,7 +560,87 @@ export default function ProjectDetail({
               })}
             </div>
           </div>
+
+          {/* 项目 ADE：申请 + 配置弹窗（迁自原「项目ADE」tab） */}
+          <div className="modal-field">
+            <div className="modal-field-label-row">
+              <div className="modal-field-label">项目 ADE</div>
+              <button
+                type="button"
+                className="member-add-btn"
+                onClick={() => { setAdeApplying(true); setAdeForm({ name: '', role: '' }) }}
+              >
+                ＋ 申请专属ADE
+              </button>
+            </div>
+            <div className="edit-member-list">
+              {project.agents.length === 0 && (
+                <div className="edit-ade-empty">暂无 ADE 接入本项目</div>
+              )}
+              {project.agents.map((a) => {
+                const busy = a.status === '工作中'
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className="edit-ade-row"
+                    onClick={() => { if (!busy) setAdeEditingId(a.id) }}
+                    title={busy ? '工作中的 ADE 不可修改' : '点击配置 ADE'}
+                  >
+                    <span className="edit-member-avatar edit-ade-avatar">A</span>
+                    <span className="edit-member-text">
+                      <span className="edit-member-name">{a.name}</span>
+                      <span className="edit-member-sub">
+                        {a.role} · {a.model} · {busy ? `当前：${a.currentTask}` : '空闲'}
+                      </span>
+                    </span>
+                    <span className="settings-row-right">
+                      <StatusBadge tone={busy ? 'info' : 'neutral'}>{a.status}</StatusBadge>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </FormModal>
+      )}
+
+      {/* ADE 申请弹窗（编辑项目弹窗之上） */}
+      {adeApplying && (
+        <FormModal
+          title="申请专属ADE"
+          confirmText="申请"
+          confirmDisabled={!adeForm.name.trim()}
+          onConfirm={handleApplyAde}
+          onClose={() => { setAdeApplying(false); setAdeForm({ name: '', role: '' }) }}
+        >
+          <ModalField label="ADE 名称">
+            <input
+              className="field-input"
+              value={adeForm.name}
+              placeholder="如 研发工程师ADE"
+              onChange={(e) => setAdeForm({ ...adeForm, name: e.target.value })}
+            />
+          </ModalField>
+          <ModalField label="角色">
+            <input
+              className="field-input"
+              value={adeForm.role}
+              placeholder="研发工程师/测试工程师…"
+              onChange={(e) => setAdeForm({ ...adeForm, role: e.target.value })}
+            />
+          </ModalField>
+        </FormModal>
+      )}
+
+      {/* ADE 配置弹窗（点 ADE 行打开，与原「项目ADE」tab 同源） */}
+      {editingAgent && (
+        <AdeSettingsModal
+          agent={editingAgent}
+          onSave={handleSaveAde}
+          onRemove={handleRemoveAde}
+          onClose={() => setAdeEditingId(null)}
+        />
       )}
 
       {/* 成员添加/编辑弹窗（编辑项目弹窗之上） */}

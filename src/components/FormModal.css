@@ -21,6 +21,19 @@
   animation: modal-pop 0.15s ease-out;
 }
 
+/* 宽版弹窗（编辑项目：含成员/ADE 区块） */
+.modal-box.wide {
+  width: 560px;
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-box.wide .modal-fields {
+  overflow-y: auto;
+  min-height: 0;
+}
+
 /* 标题栏 */
 .modal-head {
   display: flex;

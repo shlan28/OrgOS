@@ -13,7 +13,7 @@ import { MultiViewIcon } from './components/icons'
 type View =
   | { type: 'home' }
   | { type: 'project-center' }
-  | { type: 'project-detail'; projectId: string; initialNav?: 'automation'; focusJobId?: string }
+  | { type: 'project-detail'; projectId: string; initialNav?: 'workflow'; focusJobId?: string }
 
 /** 首页多视窗初始槽位：当前会话（新对话）进左上，其余未分配 */
 const INITIAL_PANES: PaneSession[] = [{ kind: 'new' }, null, null, null]
@@ -41,7 +41,7 @@ export default function App() {
 
   /** 通知跳转：进入对应项目详情 → 自动化任务 tab → 待人工处理 segment → 高亮定位任务卡片 */
   const handleGoToNotification = (n: Notification) => {
-    setView({ type: 'project-detail', projectId: n.projectId, initialNav: 'automation', focusJobId: n.jobId })
+    setView({ type: 'project-detail', projectId: n.projectId, initialNav: 'workflow', focusJobId: n.jobId })
   }
 
   /* —— 文件夹管理（项目中心域，与 projects 同级 state） —— */
@@ -158,7 +158,6 @@ export default function App() {
                 engine={engine}
                 initialNav={view.initialNav}
                 focusJobId={view.focusJobId}
-                onClearFocus={() => setView((v) => (v.type === 'project-detail' ? { ...v, focusJobId: undefined } : v))}
               />
             )}
           </main>
