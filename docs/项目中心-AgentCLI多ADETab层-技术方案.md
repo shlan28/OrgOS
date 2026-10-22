@@ -1,7 +1,7 @@
 # 项目中心 · Agent CLI 多 ADE Tab 层 —— 技术方案
 
 > 创建日期：2026-10-22
-> 更新日期：2026-10-22（实施完成：附验证结果；见第 8 节）
+> 更新日期：2026-10-22（实施完成：附验证结果，见第 8 节；**manual 会话「清空」按钮移除**，原 3.6 节作废，见第 9 节）
 
 ## 1. 需求
 
@@ -77,10 +77,10 @@ loomweb j1「每日构建」示例：拉取代码/安装依赖/构建产物 → 
 手动会话插话 append 的 `prompt` 行挂 `activeAgentId`；1.5s 后 ADE 回应
 （`think` 行 + 消息）也挂同一 agent——插给谁、谁回应。
 
-### 3.6 清空按钮（manual 会话）
+### 3.6 ~~清空按钮（manual 会话）~~（已移除，见第 9 节）
 
-按当前选中 agent 清空：`logs = logs.filter(l => agentIdOf(l) !== activeAgentId)`
-（只删当前 agent 的行，另一 agent 轨迹保留）。
+原方案：按当前选中 agent 清空（只删当前 agent 的行）。
+**2026-10-22 鹿鹿子大王要求去掉清空按钮**——已实施移除，`onUpdateProject` prop 一并清理。
 
 ### 3.7 四格头部对齐说明
 
@@ -138,3 +138,14 @@ Playwright 14 步验证（13 PASS + 1 项 mock 数据缺失）：
 
 亲自读图验收 4 张截图（agenttab-auto-a1 / agenttab-auto-a2 / agenttab-manual-a2 / agenttab-single）：
 tab 层视觉（状态点 + 选中底条 + 名字）、双桶轨迹内容、空态、单 agent 布局全部符合设计。
+
+## 9. 清空按钮移除（2026-10-22 鹿鹿子大王）
+
+- **变更**：manual 会话头部的「清空」按钮（含确认态）整体移除——Agent CLI 是 agent 轨迹的
+  只读终端，不需要人工清空操作
+- **改动**：`TerminalPane.tsx` 删按钮 + `confirmingClear` state + `handleClear` + 不再接收
+  `onUpdateProject` prop；`ProjectDetail.tsx` 调用处同步删 prop；`TerminalPane.css` 无残留样式
+  （`grep term-clear` 全项目 0 命中）
+- **验证**：build 通过；Playwright 确认 auto/manual 两种会话 `.term-head` 内 0 按钮、无「清空」
+  文字，agent tab 层 / 双桶切换 / 运行呼吸点不受影响；亲自读图 `tmp/clear-removed.png` 确认
+- E 组验证中「清空只清 a2 桶」的历史结论随按钮移除一并作废

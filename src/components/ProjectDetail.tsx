@@ -437,7 +437,6 @@ export default function ProjectDetail({
             activeSession={activeSession}
             activeAgentId={activeAgentId}
             onSelectAgent={(id) => setActiveAgentId(id)}
-            onUpdateProject={onUpdateProject}
           />
         </div>
         {renderResizer(2)}
