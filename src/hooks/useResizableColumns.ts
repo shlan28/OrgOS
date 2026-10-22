@@ -1,59 +1,77 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-/** 列定义：默认宽 + 最小宽 */
+/** 列定义：默认比例（flex-grow 权重）+ 最小宽 */
 export interface ResizableColumnSpec {
-  defaultWidth: number
+  ratio: number
   minWidth: number
 }
 
 export interface ResizableColumns {
-  /** 当前各列宽度（列数 = specs 长度；null = 未拖过 → 调用方按默认渲染） */
-  widths: number[] | null
+  /** 各列宽度覆盖值（null = 该列走默认比例；拖拽后为固定 px） */
+  widths: (number | null)[]
+  /** 某列的内联样式（flex 比例/定宽 + minWidth） */
+  cellStyle: (index: number) => { flex: string; minWidth: number }
   /** 拖拽某条拖拽条（index = 左侧列下标）：挂在 resizer 的 onMouseDown */
   startResize: (index: number, e: React.MouseEvent) => void
-  /** 双击拖拽条重置（null = 回默认比例） */
+  /** 双击拖拽条重置（全 null = 回默认比例） */
   reset: () => void
 }
 
 /**
- * 四格布局列宽拖拽（详情页专用，但保持通用）：
- * - 只管理「定宽列」（前 N 列，渲染时 style.width 生效）；
- * - 最后一列由调用方用 flex:1 吸收剩余宽度；
- * - minmax 钳制：左列不小于 min，也不超过「容器 − 其余列 min」的隐式上限；
+ * 详情页四格列宽（比例分配 + 拖拽微调）：
+ * - 默认态：各列 `flex: <ratio> 1 0px`，按比例分「扣除 padding 与拖拽条后的剩余空间」，
+ *   窗口缩放自动保持比例、不会溢出（百分比 width 会因不含拖拽条而溢出）；
+ * - 拖拽后：被拖列固定为 `flex: 0 0 <px>px`，其余列仍按比例重新分配剩余空间；
+ * - 起始宽读真实 DOM 宽（非 spec 数值——比例态下两者无对应关系，用 spec 会跳变）；
+ * - max 钳制：不把其余列挤到各自 minWidth 以下（否则溢出容器）；
  * - window 级 mousemove/mouseup 保证拖出元素仍生效，结束后清理。
  */
 export function useResizableColumns(specs: ResizableColumnSpec[]): ResizableColumns {
-  const [widths, setWidths] = useState<number[] | null>(null)
+  /** null = 未拖过该列（走默认比例） */
+  const [widths, setWidths] = useState<(number | null)[]>(() => specs.map(() => null))
 
   /** 拖拽会话数据（事件闭包捕获用 ref，避免重渲染中断） */
-  const drag = useRef<{ index: number; startX: number; startWidth: number } | null>(null)
+  const drag = useRef<{ index: number; startX: number; startWidth: number; max: number } | null>(null)
   const [dragging, setDragging] = useState(false)
 
   const startResize = useCallback((index: number, e: React.MouseEvent) => {
     e.preventDefault()
-    drag.current = { index, startX: e.clientX, startWidth: 0 }
-    setDragging(true)
-  }, [])
+    const resizer = e.currentTarget as HTMLElement
+    // 左邻格 = 被拖拽的列；其真实渲染宽作为拖拽起点
+    const leftCell = resizer.previousElementSibling as HTMLElement | null
+    const grid = resizer.parentElement
 
-  // 拖动中：window mousemove 计算 delta → 更新左列宽
+    // max = 容器内容宽 − 拖拽条总宽 − 其余列 minWidth 之和
+    let max = Number.POSITIVE_INFINITY
+    if (grid) {
+      const cs = getComputedStyle(grid)
+      const contentW = grid.clientWidth - parseFloat(cs.paddingLeft || '0') - parseFloat(cs.paddingRight || '0')
+      const gapW = Array.from(grid.querySelectorAll('.cell-resizer'))
+        .reduce((sum, el) => sum + el.getBoundingClientRect().width, 0)
+      const othersMin = specs.reduce((sum, sp, i) => (i === index ? sum : sum + sp.minWidth), 0)
+      max = Math.max(specs[index].minWidth, contentW - gapW - othersMin)
+    }
+
+    drag.current = {
+      index,
+      startX: e.clientX,
+      startWidth: leftCell?.getBoundingClientRect().width ?? specs[index].minWidth,
+      max,
+    }
+    setDragging(true)
+  }, [specs])
+
+  // 拖动中：window mousemove 计算 delta → 更新该列定宽
   useEffect(() => {
     if (!dragging) return
 
     const onMove = (ev: MouseEvent) => {
       const d = drag.current
       if (!d) return
-      const delta = ev.clientX - d.startX
-
+      const min = specs[d.index].minWidth
+      const next = Math.min(d.max, Math.max(min, d.startWidth + (ev.clientX - d.startX)))
       setWidths((prev) => {
-        // 基准列宽：未拖过 = 默认宽
-        const base = prev ?? specs.map((s) => s.defaultWidth)
-        if (d.startWidth === 0) {
-          // 首次 move 记录起始宽（mousedown 时 DOM 宽读取时机不稳，这里延迟取值）
-          d.startWidth = base[d.index]
-        }
-        const min = specs[d.index].minWidth
-        const next = Math.max(min, d.startWidth + delta)
-        const out = base.slice()
+        const out = prev.slice()
         out[d.index] = next
         return out
       })
@@ -72,7 +90,18 @@ export function useResizableColumns(specs: ResizableColumnSpec[]): ResizableColu
     }
   }, [dragging, specs])
 
-  const reset = useCallback(() => setWidths(null), [])
+  const reset = useCallback(() => setWidths(specs.map(() => null)), [specs])
 
-  return { widths, startResize, reset }
+  const cellStyle = useCallback(
+    (index: number) => {
+      const w = widths[index]
+      return {
+        flex: w == null ? `${specs[index].ratio} 1 0px` : `0 0 ${w}px`,
+        minWidth: specs[index].minWidth,
+      }
+    },
+    [widths, specs],
+  )
+
+  return { widths, cellStyle, startResize, reset }
 }

@@ -69,11 +69,13 @@ interface ProjectDetailProps {
   focusJobId?: string | null
 }
 
-/** 格 1..3 定宽列（格 4 flex 吸收剩余） */
+/** 四格列宽比例（flex-grow 权重）：10% / 20% / 35% / 35%——格 3 Agent CLI 与格 4 工作流占大头
+ *  minWidth 取「常见视口（≥1280）下不触底」的值，保证比例精确；窄窗口才由 min 兜底防塌 */
 const COLUMN_SPECS = [
-  { defaultWidth: 168, minWidth: 120 }, // 格 1 会话列表
-  { defaultWidth: 298, minWidth: 200 }, // 格 2 会话详情
-  { defaultWidth: 233, minWidth: 160 }, // 格 3 工具日志
+  { ratio: 10, minWidth: 96 },  // 格 1 会话列表（1280 下 10% ≈ 98px，不触底）
+  { ratio: 20, minWidth: 180 }, // 格 2 会话详情（1280 下 20% ≈ 195px，不触底）
+  { ratio: 35, minWidth: 160 }, // 格 3 Agent CLI
+  { ratio: 35, minWidth: 240 }, // 格 4 工作流
 ]
 
 /**
@@ -93,8 +95,7 @@ export default function ProjectDetail({
     ? project.autoJobs.find((j) => j.id === activeSession.jobId) ?? null
     : null
 
-  const { widths, startResize, reset } = useResizableColumns(COLUMN_SPECS)
-  const cellWidth = (i: number) => (widths ? widths[i] : COLUMN_SPECS[i].defaultWidth)
+  const { cellStyle, startResize, reset } = useResizableColumns(COLUMN_SPECS)
 
   const [openTabs, setOpenTabs] = useState<NavKey[]>(ALL_TAB_KEYS)
   const [activeTab, setActiveTab] = useState<NavKey>(
@@ -397,9 +398,10 @@ export default function ProjectDetail({
 
   return (
     <div className="page detail-page">
-      {/* 四格：格 1 会话列表 / 格 2 会话详情 / 格 3 工具日志 / 格 4 工作流（拖拽条 = 间隙） */}
+      {/* 四格：格 1 会话列表 / 格 2 会话详情 / 格 3 Agent CLI / 格 4 工作流（拖拽条 = 间隙）
+          宽度统一走 flex 比例（10/20/35/35），拖拽后该格固定 px、其余格按比例重分配 */}
       <div className="detail-grid">
-        <div className="detail-cell" style={{ width: cellWidth(0), flex: `0 0 ${cellWidth(0)}px` }}>
+        <div className="detail-cell" style={cellStyle(0)}>
           <SessionRail
             project={project}
             sessions={project.sessions}
@@ -410,7 +412,7 @@ export default function ProjectDetail({
           />
         </div>
         {renderResizer(0)}
-        <div className="detail-cell" style={{ width: cellWidth(1), flex: `0 0 ${cellWidth(1)}px` }}>
+        <div className="detail-cell" style={cellStyle(1)}>
           <ChatPane
             project={project}
             activeSession={activeSession}
@@ -420,15 +422,15 @@ export default function ProjectDetail({
           />
         </div>
         {renderResizer(1)}
-        <div className="detail-cell" style={{ width: cellWidth(2), flex: `0 0 ${cellWidth(2)}px` }}>
+        <div className="detail-cell" style={cellStyle(2)}>
           <TerminalPane
             project={project}
             activeSession={activeSession}
           />
         </div>
         {renderResizer(2)}
-        {/* 格 4：项目配置（flex 吸收剩余宽度） */}
-        <div className="detail-cell detail-config">
+        {/* 格 4：项目配置（同行走比例分配，不再单独 flex 吸收） */}
+        <div className="detail-cell detail-config" style={cellStyle(3)}>
           <ClosableTabs
             items={TAB_ITEMS}
             openKeys={openTabs}

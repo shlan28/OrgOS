@@ -16,6 +16,9 @@
   min-height: 0;
   padding: 8px;
   background: #eef0f2;
+  /* 极窄视口（四格 min-width 之和触底）时横向滚动兜底，避免顶破窗口 */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 /* 格子语言：白底圆角卡片 */
@@ -30,10 +33,9 @@
   min-height: 0;
 }
 
-/* 格 4：项目配置区（flex 吸收剩余宽度） */
+/* 格 4：项目配置区（宽度同样由 inline flex 比例控制，见 useResizableColumns） */
 .detail-cell.detail-config {
-  flex: 1 1 auto;
-  min-width: 240px;
+  min-height: 0;
 }
 
 /* 拖拽条：6px 间隙即热区，中央 3px 竖线 hover/拖拽中高亮 */
