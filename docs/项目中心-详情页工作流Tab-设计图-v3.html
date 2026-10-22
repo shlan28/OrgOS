@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目中心 · 详情页工作流 Tab — 设计图 v3（简洁版）</title>
+<style>
+  :root {
+    --sidebar-bg: #f5f5f7;
+    --main-bg: #ffffff;
+    --border: #e5e5e5;
+    --row-divider: #f0f0f0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #888888;
+    --text-icon: #5f5f5f;
+    --accent-green: #2e8b47;
+    --status-success: #2e8b47;
+    --status-success-bg: #e8f2ea;
+    --status-info: #3b78c9;
+    --status-info-bg: #e9f0f9;
+    --status-warning: #b25e09;
+    --status-warning-bg: #f7efe4;
+    --status-neutral: #9a9a9a;
+    --edge: #c9c9cd;
+    --wf-canvas-bg: #fafbfc;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, #d8dee8 0%, #c3ccd9 50%, #b8c2d2 100%);
+    padding: 40px 24px 64px;
+  }
+  .doc { max-width: 1480px; margin: 0 auto; }
+  .doc-head { text-align: center; margin-bottom: 28px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-head h1 { font-size: 24px; margin-bottom: 8px; }
+  .doc-head p { font-size: 13px; opacity: .85; }
+  .win-cap { display: flex; align-items: baseline; gap: 12px; margin: 40px 0 14px; }
+  .win-cap .tag {
+    font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--accent-green); border-radius: 6px; padding: 3px 9px; flex-shrink: 0;
+  }
+  .win-cap h2 { font-size: 15px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .win-cap .sub { font-size: 12px; color: #fff; opacity: .85; }
+
+  /* ===== 模拟窗口 ===== */
+  .win {
+    background: var(--main-bg); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.08);
+    display: flex; flex-direction: column; height: 832px;
+  }
+  .titlebar {
+    height: 38px; display: flex; align-items: center; padding: 0 14px;
+    background: #f6f6f8; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .traffic { display: flex; gap: 8px; }
+  .traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .traffic i:nth-child(1) { background: #ec6a5f; }
+  .traffic i:nth-child(2) { background: #f4bf4f; }
+  .traffic i:nth-child(3) { background: #61c554; }
+  .titlebar .tb-title { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .tb-bell { color: var(--text-secondary); font-size: 14px; position: relative; }
+  .tb-bell i { position: absolute; top: -4px; right: -8px; font-size: 10px; font-style: normal; color: #fff; background: var(--accent-green); border-radius: 999px; padding: 0 4px; }
+  .win-body { flex: 1; display: flex; min-height: 0; }
+
+  .sidebar { width: 150px; background: var(--sidebar-bg); border-right: 1px solid var(--border); padding: 14px 10px; flex-shrink: 0; }
+  .sb-item { font-size: 12.5px; color: var(--text-secondary); padding: 6px 10px; border-radius: 6px; margin-bottom: 2px; }
+  .sb-item.active { background: #fff; color: var(--text-primary); font-weight: 600; }
+  .main { flex: 1; display: flex; min-width: 0; }
+
+  /* 左栏会话区（缩略） */
+  .chat-pane { width: 320px; flex-shrink: 0; border-right: 1px solid var(--border); background: #fcfcfd; display: flex; flex-direction: column; }
+  .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .chat-back { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: inline-block; }
+  .chat-name { font-size: 14px; font-weight: 700; }
+  .chat-desc { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+  .chat-session { padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .chat-session .s-name { font-size: 12px; font-weight: 600; }
+  .chat-session .tag { font-size: 10px; color: var(--status-info); background: var(--status-info-bg); border-radius: 4px; padding: 1px 5px; }
+  .chat-stream { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .sysmsg { font-size: 11px; color: #b0b0b0; text-align: center; }
+  .bubble-ade { background: #f2f2f4; border-radius: 10px; padding: 6px 10px; font-size: 12px; max-width: 86%; align-self: flex-start; }
+  .bubble-mine { background: var(--status-success-bg); border-radius: 10px; padding: 6px 10px; font-size: 12px; max-width: 86%; align-self: flex-end; }
+  .chat-input { border-top: 1px solid var(--border); padding: 12px 14px; display: flex; gap: 8px; align-items: center; }
+  .chat-input .box { flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 6px 11px; font-size: 12px; color: var(--text-secondary); }
+  .chat-input .send { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-green); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+
+  /* ===== 右栏 ===== */
+  .right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tabs-row {
+    display: flex; align-items: flex-end; padding: 10px 0 0 16px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs-row::-webkit-scrollbar { height: 0; }
+  .tab {
+    display: inline-flex; align-items: center;
+    font-size: 12px; color: var(--text-secondary); padding: 6px 9px;
+    border-radius: 8px 8px 0 0; white-space: nowrap; gap: 6px;
+  }
+  .tab.active { color: var(--text-primary); font-weight: 600; background: rgba(0,0,0,.06); }
+  .tab.active .x { color: #9a9a9e; font-size: 11px; }
+  .tab-plus { margin-left: auto; margin-right: 16px; margin-bottom: 2.5px; width: 24px; height: 24px; border-radius: 6px; color: var(--text-secondary); font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* ===== Workflow 面板（简洁版） ===== */
+  .wf-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* 工具条：任务下拉 + 单主操作 */
+  .wf-toolbar {
+    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; border-bottom: 1px solid var(--border); background: #fff;
+    height: 44px;
+  }
+  .wf-job-select {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 13px; font-weight: 600; color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 4px 10px; background: #fff; white-space: nowrap;
+  }
+  .wf-state-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .wf-state-dot.ok { background: var(--status-success); }
+  .wf-state-dot.run { background: var(--status-info); }
+  .wf-state-dot.wait { background: var(--status-warning); }
+  .wf-state-dot.idle { background: #c9c9cd; }
+  .wf-job-select .caret { color: var(--text-secondary); font-size: 10px; }
+  .wf-trigger {
+    font-size: 12px; color: var(--text-secondary);
+    border-left: 1px solid var(--border); padding-left: 10px; margin-left: 2px;
+    white-space: nowrap;
+  }
+  .wf-toolbar .spacer { flex: 1; }
+  .link-btn {
+    border: none; background: transparent; font-family: inherit;
+    font-size: 12px; color: var(--text-secondary); cursor: pointer; padding: 4px 8px;
+    border-radius: 6px; white-space: nowrap;
+  }
+  .link-btn:hover { color: var(--text-primary); background: rgba(0,0,0,.04); }
+  .primary-btn {
+    border: none; background: var(--accent-green); color: #fff;
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    border-radius: 6px; padding: 5px 14px; cursor: pointer; white-space: nowrap;
+  }
+  .outline-btn {
+    border: 1px solid var(--border); background: #fff; color: var(--text-primary);
+    font-family: inherit; font-size: 12px; border-radius: 6px;
+    padding: 4px 12px; cursor: pointer; white-space: nowrap;
+  }
+  .outline-btn:hover { border-color: #c9c9cd; }
+
+  /* 画布 */
+  .wf-body { flex: 1; min-height: 0; display: flex; }
+  .wf-canvas {
+    flex: 1; min-width: 0; position: relative; overflow: hidden;
+    background: var(--wf-canvas-bg);
+    background-image: radial-gradient(circle, #e8eaed 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* 节点：纯白卡片、灰线性图标、无彩色块 */
+  .node {
+    position: absolute; width: 132px; background: #fff;
+    border: 1px solid var(--border); border-radius: 10px;
+    cursor: default; z-index: 2;
+    padding: 9px 11px 10px;
+  }
+  .node.selected { border-color: var(--text-secondary); box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .node.dimmed { opacity: .68; }
+  .node-row1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .node-row1 svg { color: var(--text-icon); flex-shrink: 0; }
+  .node-title { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node-row2 { display: flex; align-items: center; justify-content: space-between; margin-top: 7px; gap: 6px; }
+  .node-meta { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .node-state { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; flex-shrink: 0; }
+  .node-state .d { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .node-state.st-success .d { background: var(--status-success); }
+  .node-state.st-success { color: var(--status-success); }
+  .node-state.st-running .d { background: var(--status-info); }
+  .node-state.st-running { color: var(--status-info); }
+  .node-state.st-waiting .d { background: var(--status-warning); }
+  .node-state.st-waiting { color: var(--status-warning); }
+  .node-state.st-pending { color: var(--status-neutral); }
+  .node-state.st-pending .d { background: #c9c9cd; }
+
+  /* 连线：统一灰，仅当前边蓝色流动 */
+  .wf-edges { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
+  .wf-edges path.edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
+  .wf-edges path.edge.flow { stroke: var(--status-info); stroke-width: 1.5; stroke-dasharray: 5 4; animation: dash 1.2s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -9; } }
+
+  /* 缩放控件（右下，三键） */
+  .wf-zoom {
+    position: absolute; right: 12px; bottom: 12px; z-index: 4;
+    display: flex; background: #fff;
+    border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+  }
+  .wf-zoom button {
+    width: 26px; height: 24px; border: none; background: transparent;
+    font-size: 13px; color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wf-zoom button + button { border-left: 1px solid var(--row-divider); }
+  .wf-zoom button:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
+
+  /* 右侧属性面板（简洁版） */
+  .wf-inspector {
+    width: 240px; flex-shrink: 0; border-left: 1px solid var(--border);
+    background: #fff; display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .wf-insp-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--row-divider); flex-shrink: 0; }
+  .wf-insp-head .t { font-size: 13px; font-weight: 700; }
+  .wf-insp-head .s { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .wf-insp-sec { padding: 11px 14px; border-bottom: 1px solid var(--row-divider); }
+  .wf-insp-sec .h { font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+  .kv { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; padding: 2.5px 0; }
+  .kv .k { color: var(--text-secondary); }
+  .kv .v { color: var(--text-primary); }
+  .kv .v.mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11px; }
+  .kv .v.link { color: var(--status-info); cursor: pointer; }
+
+  /* Gate 操作（白底、绿主按钮） */
+  .gate-acts { display: flex; gap: 8px; margin-top: 8px; }
+  .gate-acts .no {
+    flex: 1; border: none; background: transparent; border-radius: 6px;
+    padding: 6px 0; font-size: 12px; color: var(--text-secondary); cursor: pointer; font-family: inherit;
+  }
+  .gate-acts .no:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
+  .gate-acts .yes {
+    flex: 1.4; border: none; background: var(--accent-green); color: #fff;
+    border-radius: 6px; padding: 6px 0; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+
+  .insp-btn {
+    display: block; width: 100%; margin-top: 8px; border: 1px solid var(--border);
+    background: #fff; border-radius: 6px; padding: 6px 0; font-size: 12px;
+    color: var(--text-primary); cursor: pointer; font-family: inherit;
+  }
+  .insp-btn:hover { border-color: #c9c9cd; background: #fafafa; }
+
+  /* 底部状态条（3 段） */
+  .wf-runbar {
+    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+    padding: 7px 16px; border-top: 1px solid var(--border); background: #fff;
+    font-size: 12px; color: var(--text-secondary); height: 34px;
+  }
+  .wf-runbar .state { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--text-primary); }
+  .wf-runbar .state .d { width: 7px; height: 7px; border-radius: 50%; }
+  .wf-runbar .progress { flex: 1; height: 3px; border-radius: 2px; background: var(--row-divider); overflow: hidden; }
+  .wf-runbar .progress i { display: block; height: 100%; background: var(--status-info); border-radius: 2px; }
+  .wf-runbar .open { color: var(--status-info); cursor: pointer; white-space: nowrap; }
+
+  /* 通用 svg 线性图标 */
+  .ico { display: inline-block; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <h1>项目中心 · 详情页工作流 Tab — 设计图 v3（简洁版）</h1>
+    <p>去 emoji / 状态信号收敛 / 连线统一灰（仅执行边蓝色流动）/ 字号圆角阴影收敛 / 单主 CTA / 节点链居中</p>
+  </div>
+
+  <!-- ============ 状态 A：周报生成（等待确认） ============ -->
+  <div class="win-cap">
+    <span class="tag">状态 A</span>
+    <h2>周报生成 · 等待确认</h2>
+    <span class="sub">Gate 节点选中 → 属性面板「批准」为全屏唯一主 CTA</span>
+  </div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <span class="tb-title">Loom</span>
+      <span class="tb-bell">🔔<i>2</i></span>
+    </div>
+    <div class="win-body">
+      <div class="sidebar">
+        <div class="sb-item">会话</div>
+        <div class="sb-item active">项目中心</div>
+        <div class="sb-item">定制</div>
+      </div>
+      <div class="main">
+        <div class="chat-pane">
+          <div class="chat-head">
+            <span class="chat-back">← 返回</span>
+            <div class="chat-name">loomweb</div>
+            <div class="chat-desc">Loom Web 端研发 · 2026-07-02 ~ 09-30</div>
+          </div>
+          <div class="chat-session">
+            <span class="s-name">周报生成 · 发布确认</span>
+            <span class="tag">自动化</span>
+          </div>
+          <div class="chat-stream">
+            <div class="sysmsg">运行开始：周报生成 · 14:55</div>
+            <div class="bubble-ade">汇总数据完成。MR 12 · Issue 8</div>
+            <div class="bubble-ade">周报草稿生成完成，等待人工确认…</div>
+          </div>
+          <div class="chat-input">
+            <div class="box">发送消息…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="tabs-row">
+            <span class="tab">项目规范</span>
+            <span class="tab">代码</span>
+            <span class="tab">项目ADE</span>
+            <span class="tab">知识记忆</span>
+            <span class="tab">自动化任务</span>
+            <span class="tab active">工作流 <span class="x">×</span></span>
+            <span class="tab">自动化统计</span>
+            <span class="tab">代码审查</span>
+            <span class="tab">安全审查</span>
+            <span class="tab">测试</span>
+            <span class="tab-plus">＋</span>
+          </div>
+
+          <div class="wf-panel">
+            <!-- 工具条：任务下拉 + 触发方式 + 编辑链接 + 主按钮 -->
+            <div class="wf-toolbar">
+              <span class="wf-job-select">
+                <span class="wf-state-dot wait"></span>
+                周报生成
+                <span class="caret">▾</span>
+              </span>
+              <span class="wf-trigger">定时 · 每周五 18:00</span>
+              <span class="spacer"></span>
+              <button class="link-btn">去 ADE Teams 编辑</button>
+              <button class="outline-btn">查看任务</button>
+            </div>
+
+            <div class="wf-body">
+              <div class="wf-canvas">
+                <svg class="wf-edges" width="100%" height="100%">
+                  <path class="edge" d="M 172 385 C 192 385, 212 385, 232 385" />
+                  <path class="edge" d="M 364 385 C 384 385, 404 385, 424 385" />
+                  <path class="edge" d="M 556 385 C 576 385, 596 385, 616 385" />
+                </svg>
+
+                <!-- 节点链垂直居中：画布高约 700 → top 360 -->
+                <div class="node" style="left:40px; top:340px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+                    <span class="node-title">定时触发</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">每周五 18:00</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:232px; top:340px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="20" y2="20"/><rect x="6" y="12" width="3" height="8"/><rect x="11" y="7" width="3" height="13"/><rect x="16" y="3" width="3" height="17"/></svg>
+                    <span class="node-title">汇总数据</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">耗时 11 秒</span>
+                    <span class="node-state st-success"><span class="d"></span>成功</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:424px; top:340px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+                    <span class="node-title">生成周报</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">耗时 2 分 28 秒</span>
+                    <span class="node-state st-success"><span class="d"></span>成功</span>
+                  </div>
+                </div>
+
+                <div class="node selected" style="left:616px; top:340px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v6h6"/><path d="M20 10V4h-6"/><path d="M20 4l-7 7"/><path d="M4 20l7-7"/></svg>
+                    <span class="node-title">发布到外部渠道</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">shilu 确认 · 已等待 5 分钟</span>
+                    <span class="node-state st-waiting"><span class="d"></span>等待确认</span>
+                  </div>
+                </div>
+
+                <div class="wf-zoom">
+                  <button>－</button>
+                  <button>＋</button>
+                  <button title="适配">⤢</button>
+                </div>
+              </div>
+
+              <div class="wf-inspector">
+                <div class="wf-insp-head">
+                  <div class="t">发布到外部渠道</div>
+                  <div class="s">步骤 3 / 3 · 外部发布</div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">节点信息</div>
+                  <div class="kv"><span class="k">运行</span><span class="v mono">#r12</span></div>
+                  <div class="kv"><span class="k">开始时间</span><span class="v">08-28 14:55</span></div>
+                  <div class="kv"><span class="k">耗时</span><span class="v">—</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">发布前确认</div>
+                  <div class="kv"><span class="k" style="line-height:1.5;">即将把周报发布到外部渠道，请确认内容无误。</span></div>
+                  <div class="gate-acts">
+                    <button class="no">拒绝</button>
+                    <button class="yes">批准</button>
+                  </div>
+                </div>
+                <div class="wf-insp-sec">
+                  <button class="insp-btn">在左栏打开本步骤会话</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="wf-runbar">
+              <span class="state"><span class="d" style="background:var(--status-warning);"></span>等待确认</span>
+              <span class="progress"><i style="width:66%; background:var(--status-warning);"></i></span>
+              <span>步骤 2/3 · 已等待 5 分钟</span>
+              <span class="open">运行详情 ↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 状态 B：每日构建（运行中） ============ -->
+  <div class="win-cap">
+    <span class="tag">状态 B</span>
+    <h2>每日构建 · 运行中</h2>
+    <span class="sub">仅一条蓝色流动连线（全屏唯一动画）</span>
+  </div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <span class="tb-title">Loom</span>
+      <span class="tb-bell">🔔<i>2</i></span>
+    </div>
+    <div class="win-body">
+      <div class="sidebar">
+        <div class="sb-item">会话</div>
+        <div class="sb-item active">项目中心</div>
+        <div class="sb-item">定制</div>
+      </div>
+      <div class="main">
+        <div class="chat-pane">
+          <div class="chat-head">
+            <span class="chat-back">← 返回</span>
+            <div class="chat-name">loomweb</div>
+            <div class="chat-desc">Loom Web 端研发 · 2026-07-02 ~ 09-30</div>
+          </div>
+          <div class="chat-session">
+            <span class="s-name">每日构建 · 单元测试</span>
+            <span class="tag">自动化</span>
+          </div>
+          <div class="chat-stream">
+            <div class="sysmsg">运行开始：每日构建 · 08:00</div>
+            <div class="bubble-ade">拉取代码完成（2 文件变更）。</div>
+            <div class="bubble-mine">顺便把 login 分支的用例也跑一下</div>
+            <div class="bubble-ade">收到，已加入本次测试范围。</div>
+          </div>
+          <div class="chat-input">
+            <div class="box">发送消息…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="tabs-row">
+            <span class="tab">项目规范</span>
+            <span class="tab">代码</span>
+            <span class="tab">项目ADE</span>
+            <span class="tab">知识记忆</span>
+            <span class="tab">自动化任务</span>
+            <span class="tab active">工作流 <span class="x">×</span></span>
+            <span class="tab">自动化统计</span>
+            <span class="tab">代码审查</span>
+            <span class="tab">安全审查</span>
+            <span class="tab">测试</span>
+            <span class="tab-plus">＋</span>
+          </div>
+
+          <div class="wf-panel">
+            <div class="wf-toolbar">
+              <span class="wf-job-select">
+                <span class="wf-state-dot run"></span>
+                每日构建
+                <span class="caret">▾</span>
+              </span>
+              <span class="wf-trigger">定时 · 每天 08:00</span>
+              <span class="spacer"></span>
+              <button class="link-btn">去 ADE Teams 编辑</button>
+              <button class="outline-btn">暂停运行</button>
+            </div>
+
+            <div class="wf-body">
+              <div class="wf-canvas">
+                <svg class="wf-edges" width="100%" height="100%">
+                  <path class="edge" d="M 146 385 C 152 385, 160 385, 166 385" />
+                  <path class="edge" d="M 298 385 C 304 385, 312 385, 318 385" />
+                  <path class="edge flow" d="M 450 385 C 456 385, 464 385, 470 385" />
+                  <path class="edge" d="M 602 385 C 608 385, 616 385, 622 385" />
+                </svg>
+
+                <div class="node" style="left:14px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+                    <span class="node-title">定时触发</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">每天 08:00</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:166px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span class="node-title">拉取代码</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">耗时 1 秒</span>
+                    <span class="node-state st-success"><span class="d"></span>成功</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:318px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    <span class="node-title">安装依赖</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">耗时 39 秒</span>
+                    <span class="node-state st-success"><span class="d"></span>成功</span>
+                  </div>
+                </div>
+
+                <div class="node selected" style="left:470px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/><path d="M19 13h-4a2 2 0 0 0-2 2v4c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"/><path d="M5 13v2a2 2 0 0 0 2 2h2"/><path d="M19 11V9a2 2 0 0 0-2-2h-2"/></svg>
+                    <span class="node-title">单元测试</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">42/58 通过</span>
+                    <span class="node-state st-running"><span class="d"></span>运行中</span>
+                  </div>
+                </div>
+
+                <div class="node dimmed" style="left:622px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    <span class="node-title">构建产物</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta"></span>
+                    <span class="node-state st-pending"><span class="d"></span>等待</span>
+                  </div>
+                </div>
+
+                <div class="wf-zoom">
+                  <button>－</button>
+                  <button>＋</button>
+                  <button title="适配">⤢</button>
+                </div>
+              </div>
+
+              <div class="wf-inspector">
+                <div class="wf-insp-head">
+                  <div class="t">单元测试</div>
+                  <div class="s">步骤 3 / 4 · 测试执行</div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">节点信息</div>
+                  <div class="kv"><span class="k">运行</span><span class="v mono">#r11</span></div>
+                  <div class="kv"><span class="k">进度</span><span class="v">42/58 通过</span></div>
+                  <div class="kv"><span class="k">耗时</span><span class="v">进行中…</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <button class="insp-btn">在左栏打开本步骤会话</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="wf-runbar">
+              <span class="state"><span class="d" style="background:var(--status-info);"></span>运行中</span>
+              <span class="progress"><i style="width:50%;"></i></span>
+              <span>步骤 3/4 · 单元测试</span>
+              <span class="open">运行详情 ↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 状态 C：MR 静态检查（空闲） ============ -->
+  <div class="win-cap">
+    <span class="tag">状态 C</span>
+    <h2>MR 静态检查 · 空闲</h2>
+    <span class="sub">展示最近一次运行；「立即运行」为主 CTA</span>
+  </div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <span class="tb-title">Loom</span>
+      <span class="tb-bell">🔔<i>2</i></span>
+    </div>
+    <div class="win-body">
+      <div class="sidebar">
+        <div class="sb-item">会话</div>
+        <div class="sb-item active">项目中心</div>
+        <div class="sb-item">定制</div>
+      </div>
+      <div class="main">
+        <div class="chat-pane">
+          <div class="chat-head">
+            <span class="chat-back">← 返回</span>
+            <div class="chat-name">loomweb</div>
+            <div class="chat-desc">Loom Web 端研发 · 2026-07-02 ~ 09-30</div>
+          </div>
+          <div class="chat-session">
+            <span class="s-name">暂无会话</span>
+          </div>
+          <div class="chat-stream"></div>
+          <div class="chat-input">
+            <div class="box">发送消息…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="tabs-row">
+            <span class="tab">项目规范</span>
+            <span class="tab">代码</span>
+            <span class="tab">项目ADE</span>
+            <span class="tab">知识记忆</span>
+            <span class="tab">自动化任务</span>
+            <span class="tab active">工作流 <span class="x">×</span></span>
+            <span class="tab">自动化统计</span>
+            <span class="tab">代码审查</span>
+            <span class="tab">安全审查</span>
+            <span class="tab">测试</span>
+            <span class="tab-plus">＋</span>
+          </div>
+
+          <div class="wf-panel">
+            <div class="wf-toolbar">
+              <span class="wf-job-select">
+                <span class="wf-state-dot idle"></span>
+                MR 静态检查
+                <span class="caret">▾</span>
+              </span>
+              <span class="wf-trigger">事件 · MR 创建时</span>
+              <span class="spacer"></span>
+              <button class="link-btn">去 ADE Teams 编辑</button>
+              <button class="primary-btn">立即运行</button>
+            </div>
+
+            <div class="wf-body">
+              <div class="wf-canvas">
+                <svg class="wf-edges" width="100%" height="100%">
+                  <path class="edge" d="M 172 385 C 192 385, 212 385, 232 385" />
+                  <path class="edge" d="M 364 385 C 384 385, 404 385, 424 385" />
+                  <path class="edge" d="M 556 385 C 576 385, 596 385, 616 385" />
+                </svg>
+
+                <div class="node" style="left:40px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span class="node-title">事件触发</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">MR 创建时</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:232px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span class="node-title">拉取代码</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">耗时 1 秒</span>
+                    <span class="node-state st-success"><span class="d"></span>成功</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:424px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16" y1="16" x2="21" y2="21"/></svg>
+                    <span class="node-title">静态检查</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">耗时 1 分 28 秒</span>
+                    <span class="node-state st-success"><span class="d"></span>成功</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:616px; top:360px;">
+                  <div class="node-row1">
+                    <svg class="ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                    <span class="node-title">输出报告</span>
+                  </div>
+                  <div class="node-row2">
+                    <span class="node-meta">耗时 40 秒</span>
+                    <span class="node-state st-success"><span class="d"></span>成功</span>
+                  </div>
+                </div>
+
+                <div class="wf-zoom">
+                  <button>－</button>
+                  <button>＋</button>
+                  <button title="适配">⤢</button>
+                </div>
+              </div>
+
+              <div class="wf-inspector">
+                <div class="wf-insp-head">
+                  <div class="t">静态检查</div>
+                  <div class="s">步骤 2 / 3 · 质量检查</div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">最近一次运行</div>
+                  <div class="kv"><span class="k">运行</span><span class="v mono">#r8</span></div>
+                  <div class="kv"><span class="k">时间</span><span class="v">08-26 13:40 ~ 13:42</span></div>
+                  <div class="kv"><span class="k">结果</span><span class="v" style="color:var(--status-success);">成功 · 2 分 09 秒</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">节点信息</div>
+                  <div class="kv"><span class="k">类型</span><span class="v">质量检查</span></div>
+                  <div class="kv"><span class="k">产物</span><span class="v link">lint-report.html</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <button class="insp-btn">在左栏打开本步骤会话</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="wf-runbar">
+              <span class="state" style="color:var(--text-secondary);"><span class="d" style="background:#c9c9cd;"></span>空闲</span>
+              <span class="progress"><i style="width:0%;"></i></span>
+              <span>最近运行 #r8 · 成功</span>
+              <span class="open">运行详情 ↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

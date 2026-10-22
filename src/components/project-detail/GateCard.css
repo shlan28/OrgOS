@@ -1,0 +1,101 @@
+/* 待人工处理卡片：左侧 3px 橙色边条（全面板唯一彩色强调） */
+.gate-card {
+  padding: 12px 16px;
+  border-left: 3px solid var(--status-warning);
+}
+
+.gate-card + .gate-card {
+  border-top: 1px solid var(--row-divider);
+}
+
+.gate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.gate-job {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gate-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 7px;
+}
+
+.gate-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+/* 处理人标记：头像 + 「需要 xx 确认/填写」 */
+.gate-approver {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.gate-approver-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.gate-approver-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--status-warning);
+}
+
+/* 通知跳转定位：滚动到可视区 + 一次闪烁高亮（动画结束回到常态） */
+.gate-card.highlight {
+  animation: gate-highlight 2.4s ease-out 1;
+}
+
+@keyframes gate-highlight {
+  0% { background: var(--status-warning-bg); }
+  60% { background: var(--status-warning-bg); }
+  100% { background: transparent; }
+}
+
+.gate-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 11px;
+}
+
+.gate-meta {
+  font-size: 11.5px;
+  color: #b0b0b0;
+}
+
+.gate-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* 查看详情：次级文字按钮（打开任务运行弹窗） */
+.gate-detail-btn {
+  font-size: 12px;
+}

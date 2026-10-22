@@ -1,0 +1,774 @@
+/* ===== 工作流面板（React Flow 风格 · 简洁版） ===== */
+
+.wf-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 空状态 */
+.wf-empty {
+  margin: auto;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.wf-empty .sub {
+  font-size: 11.5px;
+  color: #b0b0b0;
+  margin-top: 6px;
+}
+
+/* —— 工具条 —— */
+.wf-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  height: 44px;
+}
+
+.wf-toolbar .spacer {
+  flex: 1;
+}
+
+/* 任务下拉选择器 */
+.wf-job-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: #fff;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.wf-job-select:hover {
+  border-color: #c9c9cd;
+}
+
+.wf-job-select .name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-job-select .caret {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+/* 状态点（下拉内 + 菜单项共用） */
+.wf-state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.wf-state-dot.ok,
+.wf-state-dot.idle {
+  background: #c9c9cd;
+}
+
+.wf-state-dot.run {
+  background: var(--status-info);
+}
+
+.wf-state-dot.wait {
+  background: var(--status-warning);
+}
+
+/* 任务下拉菜单 */
+.wf-job-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  padding: 5px;
+  z-index: 20;
+}
+
+/* 点击打开（非 hover）：open 类由 JS 受控 */
+.wf-job-select.open .wf-job-menu {
+  display: block;
+}
+
+.wf-job-select.open {
+  border-color: #c9c9cd;
+  background: #fafafa;
+}
+
+.wf-job-select.open .caret {
+  transform: rotate(180deg);
+}
+
+.wf-job-select .caret {
+  transition: transform 0.15s ease;
+}
+
+.wf-job-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  padding: 6px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.wf-job-menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.wf-job-menu-item.current {
+  font-weight: 600;
+}
+
+.wf-job-menu-item .n {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 菜单底部：分割线 + 新建工作流 */
+.wf-job-menu-divider {
+  height: 1px;
+  background: var(--row-divider);
+  margin: 5px 4px;
+}
+
+.wf-job-menu-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--status-info);
+  padding: 6px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.wf-job-menu-create:hover {
+  background: rgba(59, 120, 201, 0.07);
+}
+
+.wf-job-menu-create svg {
+  flex-shrink: 0;
+}
+
+/* 触发方式（竖线分隔） */
+.wf-trigger {
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--border);
+  padding-left: 10px;
+  margin-left: 2px;
+  white-space: nowrap;
+}
+
+/* 文字链接按钮（编辑占位） */
+.wf-link-btn {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.wf-link-btn:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.wf-outline-btn {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  border-radius: 6px;
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wf-outline-btn:hover {
+  border-color: #c9c9cd;
+}
+
+/* 停止（danger 语义） */
+.wf-outline-btn.danger {
+  color: #c0392b;
+}
+
+.wf-outline-btn.danger:hover {
+  border-color: #c0392b;
+  background: rgba(192, 57, 43, 0.05);
+}
+
+/* 抽屉内提示文字（运行中不可从这里启动） */
+.wf-insp-note {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.wf-primary-btn {
+  border: none;
+  background: var(--accent-green, #2e8b47);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 5px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wf-primary-btn:hover {
+  background: #27793d;
+}
+
+/* —— 画布 —— */
+.wf-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+.wf-canvas {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  background: #fafbfc;
+  background-image: radial-gradient(circle, #e8eaed 1px, transparent 1px);
+  background-size: 24px 24px;
+  cursor: grab;
+}
+
+.wf-canvas.panning {
+  cursor: grabbing;
+}
+
+/* 缩放平移层：内容整体 transform（画布底纹不缩放） */
+.wf-transform {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* 连线层：统一灰，仅当前执行边蓝色流动 */
+.wf-edges {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.wf-edges path.edge {
+  fill: none;
+  stroke: #c9c9cd;
+  stroke-width: 1.5;
+}
+
+.wf-edges path.edge.flow {
+  stroke: var(--status-info);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  animation: wf-dash 1.2s linear infinite;
+}
+
+@keyframes wf-dash {
+  to {
+    stroke-dashoffset: -9;
+  }
+}
+
+/* 节点：白卡纯描边 */
+.wf-node {
+  position: absolute;
+  width: 132px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  z-index: 2;
+  padding: 9px 11px 10px;
+}
+
+.wf-node:hover {
+  border-color: #c9c9cd;
+}
+
+.wf-node.selected {
+  border-color: var(--text-secondary);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.wf-node.dimmed {
+  opacity: 0.68;
+}
+
+.wf-node-row1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wf-node-row1 svg {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+.wf-node-row1 .t {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-node-row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 7px;
+  gap: 6px;
+}
+
+.wf-node-row2 .m {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* 节点状态：小圆点 + 文字（无彩底） */
+.wf-node-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.wf-node-state .d {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #c9c9cd;
+}
+
+.wf-node-state.success .d {
+  background: var(--status-success);
+}
+
+.wf-node-state.success {
+  color: var(--status-success);
+}
+
+.wf-node-state.running .d {
+  background: var(--status-info);
+}
+
+.wf-node-state.running {
+  color: var(--status-info);
+}
+
+.wf-node-state.waiting .d {
+  background: var(--status-warning);
+}
+
+.wf-node-state.waiting {
+  color: var(--status-warning);
+}
+
+.wf-node-state.pending {
+  color: var(--status-neutral);
+}
+
+/* 缩放控件（右下三键） */
+.wf-zoom {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: flex;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wf-zoom button {
+  width: 26px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+
+.wf-zoom button + button {
+  border-left: 1px solid var(--row-divider);
+}
+
+/* 缩放百分比 */
+.wf-zoom .pct {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  padding: 0 6px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--row-divider);
+  user-select: none;
+}
+
+.wf-zoom button:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+/* —— 右侧属性面板（可收起） —— */
+.wf-inspector {
+  position: relative;
+  width: 240px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width 0.18s ease;
+}
+
+/* 收起态：抽屉宽度归零（把手在 wf-body 层贴右边缘），画布占满 */
+.wf-inspector.collapsed {
+  width: 0;
+  border-left: none;
+}
+
+/* 收/展把手：贴抽屉左边缘垂直居中（展开）/ 贴工作流右边框垂直居中（收起） */
+.wf-insp-toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 240px;
+  z-index: 6;
+  width: 20px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 0;
+  font-family: inherit;
+  transition: right 0.18s ease;
+}
+
+/* 收起：抽屉归零后把手落到工作流右边框中点（与抽屉宽度动画同步） */
+.wf-body.insp-collapsed .wf-insp-toggle {
+  right: 0;
+}
+
+.wf-insp-toggle:hover {
+  color: var(--text-primary);
+  border-color: #c9c9cd;
+}
+
+/* 收起后内容整体不可交互 */
+.wf-inspector.collapsed .wf-insp-content {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.wf-insp-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.12s ease;
+}
+
+.wf-insp-head {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--row-divider);
+  flex-shrink: 0;
+}
+
+.wf-insp-head .t {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.wf-insp-head .s {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.wf-insp-sec {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--row-divider);
+}
+
+.wf-insp-sec .h {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.wf-kv {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  padding: 2.5px 0;
+  gap: 10px;
+}
+
+.wf-kv .k {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.wf-kv .v {
+  color: var(--text-primary);
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf-kv .v.mono {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+.wf-kv .v.st-success {
+  color: var(--status-success);
+}
+
+.wf-kv .v.st-running {
+  color: var(--status-info);
+}
+
+.wf-kv .v.st-waiting {
+  color: var(--status-warning);
+}
+
+.wf-kv .v.st-pending {
+  color: var(--status-neutral);
+}
+
+/* Gate 描述 + 操作（白底、绿主按钮） */
+.wf-gate-desc {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+
+.wf-gate-acts {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.wf-gate-acts .no {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.wf-gate-acts .no:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+.wf-gate-acts .yes {
+  flex: 1.4;
+  border: none;
+  background: var(--accent-green, #2e8b47);
+  color: #fff;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.wf-gate-acts .yes:hover {
+  background: #27793d;
+}
+
+.wf-gate-hint {
+  font-size: 11px;
+  color: #b0b0b0;
+  margin-top: 8px;
+}
+
+/* 面板内主按钮 */
+.wf-insp-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.wf-insp-btn:hover {
+  border-color: #c9c9cd;
+  background: #fafafa;
+}
+
+/* —— 底部状态条 —— */
+.wf-runbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  border-top: 1px solid var(--border);
+  background: #fff;
+  font-size: 12px;
+  color: var(--text-secondary);
+  height: 34px;
+}
+
+.wf-runbar .state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.wf-runbar .state .d {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9c9cd;
+}
+
+.wf-runbar .state .d.tone-run {
+  background: var(--status-info);
+}
+
+.wf-runbar .state .d.tone-wait {
+  background: var(--status-warning);
+}
+
+.wf-runbar .progress {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--row-divider);
+  overflow: hidden;
+}
+
+.wf-runbar .progress i {
+  display: block;
+  height: 100%;
+  background: var(--status-info);
+  border-radius: 2px;
+}
+
+.wf-runbar .info {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wf-runbar .open {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--status-info);
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 0;
+}
+
+.wf-runbar .open:hover {
+  text-decoration: underline;
+}

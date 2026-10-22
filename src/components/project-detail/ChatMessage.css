@@ -1,0 +1,204 @@
+/* ===== 会话消息（RunModal 与详情页会话区共享，从 RunModal.css 迁入，类名不变） ===== */
+
+/* 系统消息：居中灰小字 */
+.run-msg.system {
+  align-self: center;
+  font-size: 11.5px;
+  color: #b0b0b0;
+  padding: 2px 0;
+}
+
+/* 消息行 */
+.run-msg-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 78%;
+}
+
+.run-msg-row.mine {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+/* 说话人名字（连续同一说话人只显示首条） */
+.run-msg-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 0 0 3px 34px;
+}
+
+.run-msg-name.mine {
+  margin: 0 34px 3px 0;
+}
+
+/* 头像 + 气泡内容行 */
+.run-msg-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.run-msg-content.mine {
+  flex-direction: row-reverse;
+}
+
+/* 说话人头像（26px 圆形，底色由 sender.color 内联驱动） */
+.run-msg-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* ADE 气泡：左侧浅灰 */
+.run-msg-bubble.ade {
+  background: #f2f2f4;
+  border-radius: 12px 12px 12px 4px;
+  padding: 8px 12px;
+}
+
+/* 人气泡：右侧绿（iMessage 观感） */
+.run-msg-bubble.mine {
+  background: var(--status-success-bg);
+  color: #1f6b36;
+  border-radius: 12px 12px 4px 12px;
+  padding: 8px 12px;
+}
+
+.run-msg-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.run-msg-bubble.mine .run-msg-text {
+  color: #1f6b36;
+}
+
+/* 问题消息（Gate）：橙色左边条 */
+.run-msg-bubble.ade.gate {
+  border-left: 3px solid var(--status-warning);
+  background: #faf6f0;
+}
+
+.run-msg-gate-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--status-warning);
+  margin-bottom: 4px;
+}
+
+.run-msg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* 迷你表单 */
+.run-msg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.run-msg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.run-msg-field-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.run-msg-field-required {
+  color: var(--status-danger);
+  margin-left: 2px;
+}
+
+.run-msg-field .field-input {
+  width: 100%;
+}
+
+/* ===== 阶段性结果块（蓝色左边条，与 Gate 橙色问题卡片同族） ===== */
+.run-msg-result {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--status-info-bg);
+  border-left: 3px solid var(--status-info);
+  border-radius: 8px;
+}
+
+.run-msg-result-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--status-info);
+  margin-bottom: 3px;
+}
+
+.run-msg-result-summary {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.run-msg-result-files {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+/* 产物文件：蓝色 + 下划线可跳转 */
+.run-msg-result-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--status-info);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  width: fit-content;
+}
+
+.run-msg-result-file:hover {
+  color: #2b5da0;
+}
+
+.run-msg-result-file-icon {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.run-msg-result-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.run-msg-result-session {
+  font-size: 12px;
+}
+
+/* 人消息气泡文本：气泡内直接放文本节点，沿用 run-msg-text 颜色规则 */
+.run-msg-bubble.mine {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 消息内 @提及 高亮（与输入框 chip 同语言） */
+.msg-mention {
+  color: var(--status-info, #3b78c9);
+  font-weight: 600;
+}

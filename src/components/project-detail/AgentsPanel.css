@@ -1,0 +1,119 @@
+.agents-empty {
+  padding: 18px 16px;
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+.persona-empty {
+  padding: 24px 16px;
+}
+
+/* ===== 段二：ADE 个性化 ===== */
+
+.persona-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* ADE 芯片行 */
+.persona-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.persona-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--main-bg);
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.persona-chip svg {
+  color: var(--text-icon);
+}
+
+.persona-chip:hover {
+  border-color: #d0d0d4;
+}
+
+.persona-chip.active {
+  background: var(--status-info-bg);
+  border-color: var(--status-info);
+  color: var(--status-info);
+  font-weight: 600;
+}
+
+.persona-chip.active svg {
+  color: var(--status-info);
+}
+
+/* ADE.md 编辑器 */
+.persona-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-height: 0;
+}
+
+.persona-field-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.persona-required {
+  color: var(--status-danger);
+  margin-left: 2px;
+}
+
+.persona-editor {
+  flex: 1;
+  min-height: 320px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  resize: none;
+  outline: none;
+}
+
+.persona-editor:focus {
+  border-color: #d0d0d4;
+}
+
+.persona-editor::placeholder {
+  color: #b0b0b0;
+}
+
+/* 底部操作 */
+.persona-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.persona-dirty-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.persona-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}

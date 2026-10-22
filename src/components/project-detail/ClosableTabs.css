@@ -1,0 +1,213 @@
+/* ===== 格 4 tab 条（四格头部统一 40px 对齐） ===== */
+
+.config-tabs-wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  /* 行底对齐：＋ 与 tab 文字基线对齐（底部微调 margin 见 .tab-plus） */
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border);
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.config-tabs {
+  /* 占满剩余宽度：把 ＋ 推到行最右侧 */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0 0 0 12px;
+  overflow-x: auto;
+}
+
+/* 隐藏滚动条（保留滚动能力） */
+.config-tabs::-webkit-scrollbar {
+  height: 0;
+}
+
+.config-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.config-tab svg {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+.config-tab:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* 选中 tab：灰底胶囊 + 黑字加粗 */
+.config-tab.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.config-tab.active:hover {
+  background: rgba(0, 0, 0, 0.07);
+}
+
+.config-tab.active svg {
+  color: var(--text-primary);
+}
+
+.config-tab-label {
+  white-space: nowrap;
+}
+
+.config-tab-soon {
+  font-size: 10px;
+  color: #c2c2c6;
+}
+
+/* tab 计数徽标（automation 待处理 = 橙色） */
+.config-tab-count {
+  font-size: 10.5px;
+  background: var(--status-neutral-bg);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.config-tab-count.hot {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+
+/* tab 关闭 ×：仅选中 tab 渲染，hover 加深 */
+.config-tab-x {
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 1;
+  color: #9a9a9e;
+  cursor: pointer;
+  margin-left: 2px;
+}
+
+.config-tab.active:hover .config-tab-x {
+  color: var(--text-secondary);
+}
+
+.config-tab-x:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
+}
+
+/* + 重新打开按钮：行最右侧（不随溢出滚动），与 tab 文字中心对齐 */
+.tab-plus {
+  flex-shrink: 0;
+  margin-left: 6px;
+  margin-right: 12px;
+  margin-bottom: 5px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-plus:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+/* + 下拉：已关闭的 tab（默认隐藏，.show 展开；点击外部由组件内 document 监听关闭） */
+.tab-plus-menu {
+  position: absolute;
+  top: 44px;
+  right: 16px;
+  width: 224px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+  padding: 6px;
+  z-index: 10;
+  display: none;
+}
+
+.tab-plus-menu.show {
+  display: block;
+}
+
+/* ＋ 菜单改为向下弹出后位置不变；＋ 按钮贴底中心对齐微调保留 */
+
+.tab-plus-menu.show {
+  display: block;
+}
+
+.tpm-title {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 4px 8px 6px;
+  border-bottom: 1px solid var(--row-divider);
+  margin-bottom: 4px;
+}
+
+.tpm-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 7px;
+  text-align: left;
+}
+
+.tpm-item:hover {
+  background: rgba(0, 0, 0, 0.045);
+}
+
+.tpm-item svg {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+.tpm-item .tpm-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: #c2c2c6;
+  flex-shrink: 0;
+}
+
+.tpm-empty {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 10px 0;
+}

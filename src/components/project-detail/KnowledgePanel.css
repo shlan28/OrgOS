@@ -1,0 +1,447 @@
+.knowledge-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kb-segment,
+.memory-segment {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== 项目知识库：左右双栏 ===== */
+.kb-two-col {
+  flex-direction: row;
+  gap: 0;
+  align-items: stretch;
+}
+
+/* 左栏：目录树 */
+.kb-tree {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kb-tree-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding: 0 6px;
+}
+
+.kb-tree-title {
+  font-size: 11.5px;
+  color: #9a9a9a;
+}
+
+.kb-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.kb-tree-item svg {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+/* 折叠箭头（有子目录的行，独立点击区域，不影响行选中） */
+.kb-tree-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: #b0b0b0;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.kb-tree-toggle:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.kb-tree-toggle svg {
+  transition: transform 0.15s ease;
+}
+
+.kb-tree-toggle.open svg {
+  transform: rotate(90deg);
+}
+
+/* 无子目录时的对齐占位 */
+.kb-tree-toggle-spacer {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.kb-tree-item:hover {
+  background: rgba(0, 0, 0, 0.035);
+}
+
+.kb-tree-item.active {
+  background: rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+}
+
+.kb-tree-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kb-tree-count {
+  font-size: 11px;
+  color: #b0b0b0;
+  flex-shrink: 0;
+}
+
+.kb-tree-menu-btn {
+  display: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-secondary);
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.kb-tree-item:hover .kb-tree-menu-btn {
+  display: inline-flex;
+}
+
+.kb-tree-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
+}
+
+/* 目录操作菜单 */
+.kb-tree-node {
+  position: relative;
+}
+
+.kb-tree-menu {
+  position: absolute;
+  top: 30px;
+  right: 4px;
+  z-index: 20;
+  background: var(--main-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  min-width: 96px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-tree-menu-item {
+  border: none;
+  background: transparent;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.kb-tree-menu-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.kb-tree-menu-item.danger {
+  color: var(--status-danger);
+}
+
+.kb-tree-menu-item.danger:hover {
+  background: var(--status-danger-bg);
+}
+
+.kb-tree-menu-item:disabled {
+  color: #c2c2c6;
+  cursor: not-allowed;
+}
+
+.kb-tree-menu-item:disabled:hover {
+  background: transparent;
+}
+
+/* 右栏：文档列表 / 二级页面 */
+.kb-main {
+  flex: 1;
+  min-width: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kb-main.kb-detail {
+  gap: 0;
+}
+
+.kb-main.kb-editing {
+  flex: 1;
+}
+
+/* 删除确认文案 */
+.kb-confirm-text {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.knowledge-icon {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+.knowledge-chevron {
+  color: #c2c2c6;
+  transition: transform 0.15s ease;
+}
+
+.knowledge-chevron.open {
+  transform: rotate(180deg);
+}
+
+.knowledge-row {
+  cursor: pointer;
+}
+
+.knowledge-summary {
+  flex-basis: 100%;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  padding: 2px 0 4px 26px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.knowledge-source-line {
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+/* 二级页面预览底部来源行 */
+.kb-source-line {
+  margin: 18px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--row-divider);
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+.knowledge-empty {
+  padding: 18px 16px;
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+/* 记忆段 */
+.memory-segment > .section-card {
+  margin-top: 2px;
+}
+
+/* 收集记忆规则：多行文本域（复用 .field-input 边框体系，覆盖高度与内边距） */
+.rules-textarea {
+  width: 100%;
+  min-height: 72px;
+  height: 72px;
+  padding: 8px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.rules-textarea::placeholder {
+  color: #b0b0b0;
+}
+
+/* 手动添加记忆弹窗：大号多行输入框 */
+.memory-textarea {
+  width: 100%;
+  min-height: 140px;
+  height: 140px;
+  padding: 10px 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.memory-textarea::placeholder {
+  color: #b0b0b0;
+}
+
+/* 自动收集关闭时规则行禁用态 */
+.memory-rules-row.disabled {
+  cursor: default;
+}
+
+.memory-rules-row.disabled:hover {
+  background: transparent;
+}
+
+.memory-rules-row.disabled .settings-row-title,
+.memory-rules-row.disabled .settings-row-sub {
+  color: #c2c2c6;
+}
+
+.memory-rules-row.disabled .knowledge-chevron {
+  color: #e0e0e4;
+}
+
+.policy-days-input {
+  width: 90px;
+  flex: none;
+}
+
+.policy-days-input:disabled {
+  background: #f5f5f7;
+  color: #b0b0b0;
+}
+
+.policy-days-unit {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.policy-permanent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.memory-row.archived .settings-row-title,
+.memory-row.archived .settings-row-sub {
+  color: var(--status-neutral);
+}
+
+.memory-expand {
+  flex-basis: 100%;
+  padding: 2px 0 4px 0;
+}
+
+.memory-expand-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* ===== 自动反思规则 ===== */
+
+/* 编辑区字段行：控件 + label 横向排列 */
+.reflect-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reflect-field-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* 反思频率三选一按钮组（互斥单选，选中黑底白字） */
+.reflect-freq {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.reflect-freq button {
+  border: none;
+  background: transparent;
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.reflect-freq button + button {
+  border-left: 1px solid var(--border);
+}
+
+.reflect-freq button:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+.reflect-freq button.active {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+/* 自定义反思规则 textarea（复用 .field-input 边框体系，覆盖高度与内边距） */
+.reflect-textarea {
+  width: 100%;
+  min-height: 64px;
+  height: 64px;
+  padding: 8px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.reflect-textarea::placeholder {
+  color: #b0b0b0;
+}
+
+/* 机制说明文案 */
+.reflect-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* 记忆展开区 AI 反思备注条 */
+.reflect-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--main-bg);
+  border: 1px solid var(--row-divider);
+  border-radius: 7px;
+  padding: 6px 10px;
+  margin: 0;
+}
+
+.reflect-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}

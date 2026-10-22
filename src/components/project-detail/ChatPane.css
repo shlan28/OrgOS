@@ -1,0 +1,169 @@
+/* ===== 格 2：会话详情 ===== */
+
+.chat-pane {
+  flex: 1; /* 撑满 detail-cell 高度（消息少时输入框仍置底） */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  position: relative; /* 成员抽屉定位基准 */
+  overflow: hidden;
+}
+
+/* 单行头部 = 当前会话行：会话名 + 自动化 tag + 成员 icon + 编辑（40px 与四格头部对齐） */
+.chat-session-bar {
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-session-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.chat-session-title .s-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 会话名按钮（点击改名）：hover 微底提示可编辑 */
+.chat-session-title .s-name-btn {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: text;
+}
+
+.chat-session-title .s-name-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.chat-session-title .s-name-btn:disabled {
+  cursor: default;
+}
+
+/* 会话名编辑 input（回车保存 / Esc 取消 / 失焦保存） */
+.chat-session-title .s-name-input {
+  border: 1px solid var(--status-info);
+  border-radius: 6px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  width: 100%;
+  padding: 3px 6px;
+  outline: none;
+}
+
+/* 自动化会话 tag（紧跟会话名） */
+.chat-session-title .s-name .s-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--status-info);
+  background: var(--status-info-bg);
+  border-radius: 5px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* 圆角 icon（成员） */
+.icon-toggle {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-icon);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.icon-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+.icon-toggle.active {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--text-primary);
+}
+
+/* 消息流 */
+.chat-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-stream-empty {
+  margin: auto;
+  font-size: 12.5px;
+  color: #b0b0b0;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* 插话输入框（头像 + 输入 + 圆形发送） */
+.chat-input {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+}
+
+/* 输入框本体 = MentionInput（MentionInput.css） */
+
+.chat-send-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #6b7a5e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.chat-send-btn:disabled {
+  background: #a8b09a;
+  cursor: not-allowed;
+  opacity: 0.75;
+}

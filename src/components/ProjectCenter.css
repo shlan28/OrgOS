@@ -1,0 +1,183 @@
+.project-center {
+  width: min(960px, 100%);
+}
+
+/* 标题行：左侧标题/副标题，右侧新建按钮 */
+.project-center-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.project-center-head .text-btn {
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+
+/* 弹窗内行内校验提示 */
+.form-hint {
+  font-size: 12px;
+  margin: -4px 0 0;
+  color: var(--text-secondary);
+}
+
+.form-hint.danger {
+  color: var(--status-danger);
+}
+
+.project-grid {
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+/* 顶层标题行右侧按钮组 */
+.project-center-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ghost 按钮：新建文件夹（灰描边，弱于主按钮） */
+.text-btn.ghost {
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.text-btn.ghost:hover {
+  color: var(--text-primary);
+  border-color: #d0d0d0;
+}
+
+/* 面包屑：项目中心 › 文件夹名 */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.breadcrumb-crumb {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.breadcrumb-crumb:hover {
+  color: var(--text-primary);
+}
+
+.breadcrumb-sep {
+  color: #c2c2c2;
+  font-size: 18px;
+}
+
+.breadcrumb-current {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 文件夹空状态 */
+.folder-empty {
+  margin-top: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+.folder-empty svg {
+  color: #c8c8c8;
+  margin-bottom: 12px;
+}
+
+.folder-empty-title {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.folder-empty-desc {
+  font-size: 12.5px;
+  margin-top: 4px;
+}
+
+/* —— 编辑文件夹弹窗：所有者名单 —— */
+
+.folder-member-list {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 2px;
+}
+
+.folder-member-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+}
+
+.folder-member-row:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.folder-member-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #5b7ba6;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.folder-member-avatar.me {
+  background: #7c66d8;
+}
+
+.folder-member-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-member-role.owner {
+  font-size: 11px;
+  color: #7c66d8;
+  background: rgba(124, 102, 216, 0.12);
+  border-radius: 5px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.folder-member-row .text-btn.danger {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--status-danger);
+  border: none;
+  flex-shrink: 0;
+}
+
+.folder-member-row .text-btn.danger:disabled {
+  color: #c0c0c0;
+  cursor: not-allowed;
+}

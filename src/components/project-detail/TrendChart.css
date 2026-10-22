@@ -1,0 +1,112 @@
+.trend-chart {
+  position: relative;
+  padding: 4px 2px 0;
+}
+
+.trend-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-bottom: 2px;
+}
+
+.trend-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.trend-legend-item .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.trend-legend-item .dot-runs {
+  background: var(--status-success);
+  opacity: 0.55;
+}
+
+.trend-legend-item .dot-rate {
+  background: var(--status-info);
+}
+
+.trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.grid-line {
+  stroke: #f0f0f0;
+  stroke-width: 1;
+}
+
+.axis-text {
+  font-size: 10.5px;
+  fill: var(--text-secondary);
+}
+
+.trend-bar {
+  fill: var(--status-success);
+  opacity: 0.5;
+}
+
+.rate-line {
+  fill: none;
+  stroke: var(--status-info);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.rate-dot {
+  fill: #fff;
+  stroke: var(--status-info);
+  stroke-width: 1.5;
+}
+
+.hover-line {
+  stroke: var(--text-secondary);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.55;
+}
+
+/* hover 浮层：白底细边框小卡片，跟随参考线定位 */
+.trend-tooltip {
+  position: absolute;
+  top: 10px;
+  transform: translateX(-50%);
+  background: var(--main-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 8px 11px;
+  min-width: 108px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.trend-tooltip-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.trend-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.trend-tooltip-row b {
+  color: var(--text-primary);
+  font-weight: 600;
+}

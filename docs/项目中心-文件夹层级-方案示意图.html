@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目中心 · 文件夹层级方案示意图</title>
+<style>
+  :root {
+    --sidebar-bg: #f5f5f7;
+    --main-bg: #ffffff;
+    --border: #e5e5e5;
+    --row-divider: #f0f0f0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #888888;
+    --text-icon: #5f5f5f;
+    --accent-green: #2e8b47;
+    --status-success: #2e8b47;
+    --status-success-bg: #e8f2ea;
+    --status-info: #3b78c9;
+    --status-info-bg: #e9f0f9;
+    --status-danger: #d64545;
+    --status-warning: #b25e09;
+    --status-warning-bg: #f7efe4;
+    --status-neutral: #9a9a9a;
+    --status-neutral-bg: #f0f0f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, #d8dee8 0%, #c3ccd9 50%, #b8c2d2 100%);
+    padding: 40px 24px 64px;
+  }
+  .doc { max-width: 1060px; margin: 0 auto; }
+  .doc-head { text-align: center; margin-bottom: 36px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-head h1 { font-size: 26px; margin-bottom: 8px; }
+  .doc-head p { font-size: 13px; opacity: .85; }
+
+  /* —— 方案区块 —— */
+  .plan { margin-bottom: 48px; }
+  .plan-title {
+    display: flex; align-items: baseline; gap: 12px;
+    background: #fff; border-radius: 12px; padding: 14px 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.10);
+    margin-bottom: 14px;
+  }
+  .plan-title .tag {
+    font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--accent-green); border-radius: 6px; padding: 3px 9px;
+    flex-shrink: 0; align-self: center;
+  }
+  .plan-title h2 { font-size: 17px; }
+  .plan-title .sub { font-size: 12.5px; color: var(--text-secondary); }
+  .plan-notes {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+  }
+  .plan-notes span {
+    font-size: 12px; background: rgba(255,255,255,.85); border-radius: 999px;
+    padding: 4px 12px; color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .plan-notes span b { color: var(--accent-green); }
+  .plan-notes span.bad b { color: var(--status-danger); }
+
+  /* —— 模拟窗口 —— */
+  .win {
+    background: var(--main-bg); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.08);
+  }
+  .win-titlebar {
+    height: 38px; background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; padding: 0 14px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .win-titlebar .name { margin: 0 auto; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .win-body { display: flex; min-height: 460px; }
+
+  /* 模拟侧边栏（示意用，窄条） */
+  .fake-sidebar {
+    width: 190px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 14px 10px; flex-shrink: 0;
+    font-size: 13px; color: var(--text-primary);
+  }
+  .fake-sidebar .sec { font-size: 11px; color: var(--text-secondary); margin: 14px 8px 6px; }
+  .fake-sidebar .item { padding: 6px 8px; border-radius: 7px; display: flex; gap: 7px; align-items: center; }
+  .fake-sidebar .item.active { background: rgba(0,0,0,.07); font-weight: 600; }
+  .fake-sidebar .item.dim { color: var(--text-secondary); }
+
+  /* 主区 */
+  .main { flex: 1; padding: 26px 30px; overflow: hidden; }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; }
+  .page-title { font-size: 24px; font-weight: 700; }
+  .page-sub { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; }
+  .new-btn {
+    font-size: 13px; color: var(--accent-green); background: none;
+    border: 1px solid var(--accent-green); border-radius: 8px;
+    padding: 6px 14px; font-weight: 600;
+  }
+
+  /* —— 项目卡片（还原现有 ProjectCard 风格） —— */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+  .card {
+    background: var(--main-bg); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; cursor: pointer; transition: box-shadow .15s, transform .15s;
+  }
+  .card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-name { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }
+  .card-name svg { color: var(--text-icon); flex-shrink: 0; }
+  .card-desc { font-size: 12px; color: var(--text-secondary); margin: 7px 0 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-period { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .card-period .range { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-secondary); }
+  .card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+  .avatars { display: inline-flex; }
+  .avatar {
+    width: 21px; height: 21px; border-radius: 50%; background: #e3e8f0; color: #5b7ba6;
+    font-size: 10.5px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+    border: 1.5px solid #fff;
+  }
+  .avatar + .avatar { margin-left: -6px; }
+  .meta { font-size: 11.5px; color: var(--text-secondary); }
+
+  .badge { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+  .badge.success { color: var(--status-success); background: var(--status-success-bg); }
+  .badge.info { color: var(--status-info); background: var(--status-info-bg); }
+  .badge.neutral { color: var(--status-neutral); background: var(--status-neutral-bg); }
+  .badge.warning { color: var(--status-warning); background: var(--status-warning-bg); }
+
+  /* —— 方案A：分组区块 —— */
+  .group-head { display: flex; align-items: center; gap: 8px; margin: 22px 0 0; }
+  .group-head .gname { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }
+  .group-head .gname svg { color: var(--text-icon); }
+  .group-head .gcount { font-size: 12px; color: var(--text-secondary); }
+  .group-head .gmenu { margin-left: auto; font-size: 15px; color: var(--text-secondary); letter-spacing: 2px; }
+  .group-head .gfold { font-size: 11px; color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
+  .group-head.ungrouped .gname { color: var(--text-secondary); font-weight: 500; }
+
+  /* —— 方案B：左侧文件夹树 —— */
+  .tree {
+    width: 200px; flex-shrink: 0; border-right: 1px solid var(--border);
+    padding: 18px 10px; font-size: 13px;
+  }
+  .tree .titem { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; cursor: pointer; }
+  .tree .titem:hover { background: rgba(0,0,0,.03); }
+  .tree .titem.active { background: rgba(0,0,0,.06); font-weight: 600; }
+  .tree .titem .cnt { margin-left: auto; font-size: 11.5px; color: var(--text-secondary); }
+  .tree .tsec { font-size: 11px; color: var(--text-secondary); margin: 14px 10px 6px; }
+  .tree .newfolder { color: var(--accent-green); font-size: 12.5px; padding: 7px 10px; cursor: pointer; }
+
+  /* —— 方案C：文件夹卡片 + 面包屑 —— */
+  .folder-card {
+    border: 1px solid var(--border); border-radius: 14px; padding: 14px;
+    cursor: pointer; background: var(--sidebar-bg);
+    transition: box-shadow .15s, transform .15s;
+  }
+  .folder-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.08); transform: translateY(-1px); }
+  .folder-stack { position: relative; height: 34px; margin-bottom: 10px; }
+  .folder-stack .back {
+    position: absolute; left: 14px; top: 6px; width: 44px; height: 26px;
+    background: #dfe3ea; border: 1px solid var(--border); border-radius: 5px;
+  }
+  .folder-stack .front {
+    position: absolute; left: 6px; top: 0; width: 52px; height: 30px;
+    background: #eef0f4; border: 1px solid #d5d9e0; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .folder-card .fname { font-size: 14px; font-weight: 600; }
+  .folder-card .fcount { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-bottom: 2px; }
+  .breadcrumb b { color: var(--text-primary); font-size: 20px; font-weight: 700; }
+  .breadcrumb .crumb-arrow { color: #bbb; }
+  .breadcrumb .crumb { cursor: pointer; }
+  .breadcrumb .crumb:hover { color: var(--text-primary); }
+
+  .state-label {
+    font-size: 12px; color: #fff; background: rgba(0,0,0,.35);
+    display: inline-block; border-radius: 999px; padding: 3px 12px; margin: 0 0 8px 4px;
+  }
+  .arrow-down { text-align: center; color: #fff; font-size: 20px; margin: 6px 0; text-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .new-btn.ghost { color: var(--text-secondary); border-color: var(--border); font-weight: 500; }
+  .btn-group { display: flex; gap: 8px; }
+
+  /* —— 新建项目弹窗（示意） —— */
+  .modal-mask {
+    position: absolute; inset: 0; background: rgba(0,0,0,.28);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal {
+    width: 380px; background: #fff; border-radius: 14px; padding: 20px;
+    box-shadow: 0 20px 48px rgba(0,0,0,.25);
+  }
+  .modal h3 { font-size: 15.5px; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; }
+  .field input, .field select {
+    width: 100%; height: 32px; border: 1px solid var(--border); border-radius: 8px;
+    padding: 0 10px; font-size: 13px; font-family: inherit; color: var(--text-primary);
+    background: #fff; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent-green); }
+  .field .hint { font-size: 11.5px; color: var(--status-danger); margin-top: 4px; }
+  .modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .modal-foot .cancel {
+    height: 30px; padding: 0 14px; font-size: 13px; border: none; background: none;
+    color: var(--text-secondary); cursor: pointer; border-radius: 7px;
+  }
+  .modal-foot .cancel:hover { background: var(--sidebar-bg); }
+  .modal-foot .ok {
+    height: 30px; padding: 0 16px; font-size: 13px; font-weight: 600; border: none;
+    background: var(--accent-green); color: #fff; cursor: pointer; border-radius: 7px;
+  }
+  .modal-foot .ok:disabled { opacity: .45; cursor: not-allowed; }
+  .win-body { position: relative; }
+
+  .doc-foot { text-align: center; color: rgba(255,255,255,.85); font-size: 12px; margin-top: 8px; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <div class="doc-head">
+    <h1>项目中心 · 文件夹层级 — 方案示意图</h1>
+    <p>三个方案共用数据模型：Project 增加 folderId?，新增 ProjectFolder（单层）· 创建日期：2026-08-28</p>
+  </div>
+
+  <!-- ══════════════ 方案 A ══════════════ -->
+  <div class="plan">
+    <div class="plan-title">
+      <span class="tag">方案 A</span>
+      <h2>分组区块式</h2>
+      <span class="sub">单页按文件夹分区块渲染，未分组置底 · 改动最小</span>
+    </div>
+    <div class="plan-notes">
+      <span><b>＋</b> 一屏总览全部文件夹与项目，零跳转</span>
+      <span><b>＋</b> 只改 ProjectCenter，工作量最小</span>
+      <span class="bad"><b>－</b> 文件夹多时页面变长（可用区块折叠缓解）</span>
+    </div>
+    <div class="win">
+      <div class="win-titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="name">Loom</span></div>
+      <div class="win-body">
+        <div class="fake-sidebar">
+          <div class="sec">工作区</div>
+          <div class="item dim">💬 新对话</div>
+          <div class="item dim">🎨 定制</div>
+          <div class="item active">🗂 项目中心</div>
+          <div class="sec">项目</div>
+          <div class="item dim">📁 loomweb</div>
+        </div>
+        <div class="main">
+          <div class="page-head">
+            <div>
+              <div class="page-title">项目中心</div>
+              <div class="page-sub">共 5 个项目 · 2 个文件夹</div>
+            </div>
+            <button class="new-btn">＋ 新建项目</button>
+          </div>
+
+          <!-- 文件夹区块 1 -->
+          <div class="group-head">
+            <span class="gname">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              研发线
+            </span>
+            <span class="gcount">2 个项目</span>
+            <span class="gfold">▾ 收起</span>
+            <span class="gmenu">⋯</span>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>loomweb</span>
+                <span class="badge success">进行中</span>
+              </div>
+              <div class="card-desc">Loom Web 端研发</div>
+              <div class="card-period"><span class="range">📅 07-02 ~ 09-30</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">S</span><span class="avatar">L</span><span class="avatar">W</span></span><span class="meta">3 成员 · 2 ADE</span></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>yigou-app</span>
+                <span class="badge success">进行中</span>
+              </div>
+              <div class="card-desc">翼构移动应用</div>
+              <div class="card-period"><span class="range">📅 05-18 ~ 08-31</span><span class="badge warning">剩 3 天</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">Z</span><span class="avatar">H</span></span><span class="meta">4 成员 · 1 ADE</span></div>
+            </div>
+          </div>
+
+          <!-- 文件夹区块 2 -->
+          <div class="group-head">
+            <span class="gname">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              数据平台
+            </span>
+            <span class="gcount">1 个项目</span>
+            <span class="gfold">▾ 收起</span>
+            <span class="gmenu">⋯</span>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>data-pipeline</span>
+                <span class="badge neutral">规划中</span>
+              </div>
+              <div class="card-desc">数据管道与数仓建设</div>
+              <div class="card-period"><span class="range">📅 09-01 ~ 12-31</span><span class="badge neutral">5 天后启动</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">C</span></span><span class="meta">2 成员 · 1 ADE</span></div>
+            </div>
+          </div>
+
+          <!-- 未分组 -->
+          <div class="group-head ungrouped">
+            <span class="gname">未分组</span>
+            <span class="gcount">2 个项目</span>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>ade-platform</span>
+                <span class="badge info">已完成</span>
+              </div>
+              <div class="card-desc">ADE 平台底座</div>
+              <div class="card-period"><span class="range">📅 03-01 ~ 06-30</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">S</span><span class="avatar">Q</span></span><span class="meta">2 成员 · 1 ADE</span></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>docs-site</span>
+                <span class="badge neutral">规划中</span>
+              </div>
+              <div class="card-desc">文档站点建设</div>
+              <div class="card-period"><span class="range">📅 10-01 ~ 11-30</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">L</span></span><span class="meta">1 成员 · 0 ADE</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 方案 B ══════════════ -->
+  <div class="plan">
+    <div class="plan-title">
+      <span class="tag">方案 B</span>
+      <h2>左侧文件夹树导航</h2>
+      <span class="sub">项目中心页内两栏：左文件夹导航 + 右卡片网格，交互语言同知识库目录树</span>
+    </div>
+    <div class="plan-notes">
+      <span><b>＋</b> 与详情页「左导航+右内容」、知识库目录树交互一致</span>
+      <span><b>＋</b> 文件夹多时可滚动，未来扩展多级嵌套最顺</span>
+      <span class="bad"><b>－</b> 占横向空间，列表页布局需重构</span>
+    </div>
+    <div class="win">
+      <div class="win-titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="name">Loom</span></div>
+      <div class="win-body">
+        <div class="fake-sidebar">
+          <div class="sec">工作区</div>
+          <div class="item dim">💬 新对话</div>
+          <div class="item dim">🎨 定制</div>
+          <div class="item active">🗂 项目中心</div>
+          <div class="sec">项目</div>
+          <div class="item dim">📁 loomweb</div>
+        </div>
+        <div class="win-body" style="min-height:0;">
+          <!-- 左侧文件夹树 -->
+          <div class="tree">
+            <div class="titem active">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+              全部项目 <span class="cnt">5</span>
+            </div>
+            <div class="tsec">文件夹</div>
+            <div class="titem">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              研发线 <span class="cnt">2</span>
+            </div>
+            <div class="titem">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              数据平台 <span class="cnt">1</span>
+            </div>
+            <div class="titem">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              未分组 <span class="cnt">2</span>
+            </div>
+            <div class="newfolder">＋ 新建文件夹</div>
+          </div>
+          <!-- 右侧网格（当前选中：全部项目） -->
+          <div class="main">
+            <div class="page-head">
+              <div>
+                <div class="page-title">全部项目</div>
+                <div class="page-sub">共 5 个项目</div>
+              </div>
+              <button class="new-btn">＋ 新建项目</button>
+            </div>
+            <div class="grid">
+              <div class="card">
+                <div class="card-head">
+                  <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>loomweb</span>
+                  <span class="badge success">进行中</span>
+                </div>
+                <div class="card-desc">Loom Web 端研发 · 📁 研发线</div>
+                <div class="card-period"><span class="range">📅 07-02 ~ 09-30</span></div>
+                <div class="card-foot"><span class="avatars"><span class="avatar">S</span><span class="avatar">L</span><span class="avatar">W</span></span><span class="meta">3 成员 · 2 ADE</span></div>
+              </div>
+              <div class="card">
+                <div class="card-head">
+                  <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>yigou-app</span>
+                  <span class="badge success">进行中</span>
+                </div>
+                <div class="card-desc">翼构移动应用 · 📁 研发线</div>
+                <div class="card-period"><span class="range">📅 05-18 ~ 08-31</span><span class="badge warning">剩 3 天</span></div>
+                <div class="card-foot"><span class="avatars"><span class="avatar">Z</span><span class="avatar">H</span></span><span class="meta">4 成员 · 1 ADE</span></div>
+              </div>
+              <div class="card">
+                <div class="card-head">
+                  <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>data-pipeline</span>
+                  <span class="badge neutral">规划中</span>
+                </div>
+                <div class="card-desc">数据管道与数仓建设 · 📁 数据平台</div>
+                <div class="card-period"><span class="range">📅 09-01 ~ 12-31</span><span class="badge neutral">5 天后启动</span></div>
+                <div class="card-foot"><span class="avatars"><span class="avatar">C</span></span><span class="meta">2 成员 · 1 ADE</span></div>
+              </div>
+              <div class="card">
+                <div class="card-head">
+                  <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>ade-platform</span>
+                  <span class="badge info">已完成</span>
+                </div>
+                <div class="card-desc">ADE 平台底座 · 未分组</div>
+                <div class="card-period"><span class="range">📅 03-01 ~ 06-30</span></div>
+                <div class="card-foot"><span class="avatars"><span class="avatar">S</span><span class="avatar">Q</span></span><span class="meta">2 成员 · 1 ADE</span></div>
+              </div>
+              <div class="card">
+                <div class="card-head">
+                  <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>docs-site</span>
+                  <span class="badge neutral">规划中</span>
+                </div>
+                <div class="card-desc">文档站点建设 · 未分组</div>
+                <div class="card-period"><span class="range">📅 10-01 ~ 11-30</span></div>
+                <div class="card-foot"><span class="avatars"><span class="avatar">L</span></span><span class="meta">1 成员 · 0 ADE</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ 方案 C ══════════════ -->
+  <div class="plan">
+    <div class="plan-title">
+      <span class="tag">方案 C</span>
+      <h2>文件夹卡片 + 面包屑下钻</h2>
+      <span class="sub">Finder 式：顶层文件夹渲染为特殊卡片，点开进入文件夹内部视图</span>
+    </div>
+    <div class="plan-notes">
+      <span><b>＋</b> 最接近文件管理器心智，层级感最强</span>
+      <span><b>＋</b> 顶层视图最干净</span>
+      <span><b>＋</b> 新建项目弹窗可选所属文件夹，文件夹内新建默认归属</span>
+      <span class="bad"><b>－</b> 跨文件夹查看需来回跳转，视图状态机多一层，实现最复杂</span>
+    </div>
+
+    <span class="state-label">① 顶层视图（文件夹卡片 + 未分组项目 + 新建文件夹按钮）</span>
+    <div class="win">
+      <div class="win-titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="name">Loom</span></div>
+      <div class="win-body">
+        <div class="fake-sidebar">
+          <div class="sec">工作区</div>
+          <div class="item dim">💬 新对话</div>
+          <div class="item dim">🎨 定制</div>
+          <div class="item active">🗂 项目中心</div>
+          <div class="sec">项目</div>
+          <div class="item dim">📁 loomweb</div>
+        </div>
+        <div class="main">
+          <div class="page-head">
+            <div>
+              <div class="page-title">项目中心</div>
+              <div class="page-sub">共 5 个项目 · 2 个文件夹</div>
+            </div>
+            <div class="btn-group">
+              <button class="new-btn ghost">＋ 新建文件夹</button>
+              <button class="new-btn">＋ 新建项目</button>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="folder-card">
+              <div class="folder-stack"><span class="back"></span><span class="front"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a90a0" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span></div>
+              <div class="fname">研发线</div>
+              <div class="fcount">2 个项目</div>
+            </div>
+            <div class="folder-card">
+              <div class="folder-stack"><span class="back"></span><span class="front"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a90a0" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span></div>
+              <div class="fname">数据平台</div>
+              <div class="fcount">1 个项目</div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>ade-platform</span>
+                <span class="badge info">已完成</span>
+              </div>
+              <div class="card-desc">ADE 平台底座</div>
+              <div class="card-period"><span class="range">📅 03-01 ~ 06-30</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">S</span><span class="avatar">Q</span></span><span class="meta">2 成员 · 1 ADE</span></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>docs-site</span>
+                <span class="badge neutral">规划中</span>
+              </div>
+              <div class="card-desc">文档站点建设</div>
+              <div class="card-period"><span class="range">📅 10-01 ~ 11-30</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">L</span></span><span class="meta">1 成员 · 0 ADE</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓ 点击「研发线」文件夹卡片</div>
+
+    <span class="state-label">② 文件夹内部视图（面包屑返回 + 新建项目默认归属当前文件夹）</span>
+    <div class="win">
+      <div class="win-titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="name">Loom</span></div>
+      <div class="win-body">
+        <div class="fake-sidebar">
+          <div class="sec">工作区</div>
+          <div class="item dim">💬 新对话</div>
+          <div class="item dim">🎨 定制</div>
+          <div class="item active">🗂 项目中心</div>
+          <div class="sec">项目</div>
+          <div class="item dim">📁 loomweb</div>
+        </div>
+        <div class="main">
+          <div class="breadcrumb">
+            <span class="crumb">项目中心</span>
+            <span class="crumb-arrow">›</span>
+            <b>研发线</b>
+          </div>
+          <div class="page-head" style="margin-top:6px;">
+            <div>
+              <div class="page-sub">2 个项目</div>
+            </div>
+            <button class="new-btn">＋ 新建项目</button>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>loomweb</span>
+                <span class="badge success">进行中</span>
+              </div>
+              <div class="card-desc">Loom Web 端研发</div>
+              <div class="card-period"><span class="range">📅 07-02 ~ 09-30</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">S</span><span class="avatar">L</span><span class="avatar">W</span></span><span class="meta">3 成员 · 2 ADE</span></div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>yigou-app</span>
+                <span class="badge success">进行中</span>
+              </div>
+              <div class="card-desc">翼构移动应用</div>
+              <div class="card-period"><span class="range">📅 05-18 ~ 08-31</span><span class="badge warning">剩 3 天</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">Z</span><span class="avatar">H</span></span><span class="meta">4 成员 · 1 ADE</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓ 点击「＋ 新建项目」（在文件夹内部视图触发，弹窗内「所属文件夹」默认选中当前文件夹）</div>
+
+    <span class="state-label">③ 新建项目弹窗（新增「所属文件夹」下拉，可改选/留空）</span>
+    <div class="win">
+      <div class="win-titlebar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="name">Loom</span></div>
+      <div class="win-body">
+        <div class="fake-sidebar">
+          <div class="sec">工作区</div>
+          <div class="item dim">💬 新对话</div>
+          <div class="item dim">🎨 定制</div>
+          <div class="item active">🗂 项目中心</div>
+          <div class="sec">项目</div>
+          <div class="item dim">📁 loomweb</div>
+        </div>
+        <div class="main">
+          <div class="breadcrumb">
+            <span class="crumb">项目中心</span>
+            <span class="crumb-arrow">›</span>
+            <b>研发线</b>
+          </div>
+          <div class="page-head" style="margin-top:6px;">
+            <div>
+              <div class="page-sub">2 个项目</div>
+            </div>
+            <button class="new-btn">＋ 新建项目</button>
+          </div>
+          <div class="grid">
+            <div class="card" style="opacity:.55;">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>loomweb</span>
+                <span class="badge success">进行中</span>
+              </div>
+              <div class="card-desc">Loom Web 端研发</div>
+              <div class="card-period"><span class="range">📅 07-02 ~ 09-30</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">S</span><span class="avatar">L</span><span class="avatar">W</span></span><span class="meta">3 成员 · 2 ADE</span></div>
+            </div>
+            <div class="card" style="opacity:.55;">
+              <div class="card-head">
+                <span class="card-name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>yigou-app</span>
+                <span class="badge success">进行中</span>
+              </div>
+              <div class="card-desc">翼构移动应用</div>
+              <div class="card-period"><span class="range">📅 05-18 ~ 08-31</span><span class="badge warning">剩 3 天</span></div>
+              <div class="card-foot"><span class="avatars"><span class="avatar">Z</span><span class="avatar">H</span></span><span class="meta">4 成员 · 1 ADE</span></div>
+            </div>
+          </div>
+
+          <!-- 新建项目弹窗（示意） -->
+          <div class="modal-mask">
+            <div class="modal">
+              <h3>新建项目</h3>
+              <div class="field">
+                <label>项目名</label>
+                <input type="text" placeholder="如 loomweb">
+              </div>
+              <div class="field">
+                <label>简介</label>
+                <input type="text" placeholder="如 Loom Web 端研发">
+              </div>
+              <div class="field">
+                <label>所属文件夹</label>
+                <select>
+                  <option>研发线（当前）</option>
+                  <option>数据平台</option>
+                  <option>不放入文件夹</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>状态</label>
+                <select>
+                  <option>规划中</option>
+                  <option>进行中</option>
+                  <option>已完成</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>开始日期</label>
+                <input type="text" placeholder="YYYY-MM-DD">
+              </div>
+              <div class="field">
+                <label>截止日期</label>
+                <input type="text" placeholder="YYYY-MM-DD">
+              </div>
+              <div class="modal-foot">
+                <button class="cancel">取消</button>
+                <button class="ok" disabled>创建</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="doc-foot">loom-ui-mock · 项目中心文件夹层级方案示意图 · 创建日期 2026-08-28</p>
+</div>
+</body>
+</html>

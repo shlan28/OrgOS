@@ -1,0 +1,305 @@
+/* 遮罩（复用 FormModal 的遮罩语言） */
+.ade-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: ade-modal-fade 0.15s ease-out;
+}
+
+/* 弹窗容器 */
+.ade-modal {
+  width: 680px;
+  max-width: calc(100vw - 48px);
+  max-height: min(720px, 85vh);
+  background: var(--main-bg);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ade-modal-pop 0.15s ease-out;
+}
+
+/* ===== 头部 ===== */
+.ade-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ade-modal-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ade-modal-title svg {
+  color: var(--text-icon);
+}
+
+.ade-modal-close {
+  border: none;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ade-modal-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+/* ===== 主体（可滚动） ===== */
+.ade-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+/* ===== 表单区：两列网格 ===== */
+.ade-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+
+.ade-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ade-form-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ade-required {
+  color: var(--status-danger);
+  margin-left: 2px;
+}
+
+.ade-form-field .field-input,
+.ade-form-field .field-select {
+  width: 100%;
+}
+
+/* ===== 工具开关区 ===== */
+.ade-tools {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.ade-tools-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.ade-tools-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.ade-tools-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ade-tools-hl {
+  color: var(--status-info);
+}
+
+/* 标签页 + 统计/操作行 */
+.ade-tools-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ade-tools-tabs {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.ade-tool-tab {
+  border: none;
+  background: var(--badge-bg);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  cursor: pointer;
+}
+
+.ade-tool-tab:hover {
+  color: var(--text-primary);
+}
+
+.ade-tool-tab.active {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+  font-weight: 600;
+}
+
+.ade-tools-ops {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ade-tools-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ade-tools-link {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--status-info);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+
+.ade-tools-link:hover {
+  background: var(--status-info-bg);
+}
+
+.ade-tools-link.muted {
+  color: var(--text-secondary);
+}
+
+.ade-tools-link.muted:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+/* 分组小标题 */
+.ade-tools-group-label {
+  font-size: 11.5px;
+  color: #9a9a9a;
+  margin: 8px 0 6px;
+}
+
+/* 工具卡片网格（两列） */
+.ade-tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ade-tool-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 12px;
+  min-height: 46px;
+}
+
+.ade-tool-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ade-tool-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ade-tool-name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.ade-tool-warn {
+  font-size: 11.5px;
+  color: var(--status-warning);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ade-tool-link {
+  color: var(--status-info);
+  cursor: pointer;
+}
+
+.ade-tool-link:hover {
+  text-decoration: underline;
+}
+
+/* ===== 底部操作 ===== */
+.ade-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ade-modal-foot-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@keyframes ade-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ade-modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

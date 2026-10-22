@@ -1,0 +1,170 @@
+.notifications {
+  position: relative;
+  display: inline-flex;
+}
+
+.notifications-trigger {
+  position: relative;
+}
+
+/* 角标 */
+.notifications-badge {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--status-danger);
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* 下拉浮层（沿用 Dropdown 浮层语言） */
+.notifications-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  padding: 4px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.notifications-head {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 6px 10px 4px;
+}
+
+.notifications-empty {
+  padding: 18px 10px;
+  font-size: 12px;
+  color: #b0b0b0;
+  text-align: center;
+}
+
+.notification-item {
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.notification-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.notification-item + .notification-item {
+  border-top: 1px solid var(--row-divider);
+  border-radius: 0 0 8px 8px;
+}
+
+.notification-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notification-type {
+  flex-shrink: 0;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 18px;
+}
+
+.notification-type.type-confirm {
+  color: var(--status-warning);
+  background: var(--status-warning-bg);
+}
+
+.notification-type.type-input {
+  color: var(--status-info);
+  background: var(--status-info-bg);
+}
+
+.notification-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+.notification-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+/* foot 左侧：处理人 + 时间 */
+.notification-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.notification-approver {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.notification-approver-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.notification-time {
+  font-size: 11px;
+  color: #b0b0b0;
+  white-space: nowrap;
+}
+
+.notification-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notification-confirm-btn {
+  height: 24px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.notification-go {
+  font-size: 12px;
+}

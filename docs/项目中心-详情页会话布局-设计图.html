@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目中心 · 详情页会话布局 — 设计图</title>
+<style>
+  :root {
+    --sidebar-bg: #f5f5f7;
+    --main-bg: #ffffff;
+    --border: #e5e5e5;
+    --row-divider: #f0f0f0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #888888;
+    --text-icon: #5f5f5f;
+    --accent-green: #2e8b47;
+    --status-success: #2e8b47;
+    --status-success-bg: #e8f2ea;
+    --status-info: #3b78c9;
+    --status-info-bg: #e9f0f9;
+    --status-danger: #d64545;
+    --status-danger-bg: #faeaea;
+    --status-warning: #b25e09;
+    --status-warning-bg: #f7efe4;
+    --status-neutral: #9a9a9a;
+    --status-neutral-bg: #f0f0f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, #d8dee8 0%, #c3ccd9 50%, #b8c2d2 100%);
+    padding: 40px 24px 64px;
+  }
+  .doc { max-width: 1280px; margin: 0 auto; }
+  .doc-head { text-align: center; margin-bottom: 28px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-head h1 { font-size: 26px; margin-bottom: 8px; }
+  .doc-head p { font-size: 13px; opacity: .85; }
+  .doc-notes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 28px; }
+  .doc-notes span {
+    font-size: 12px; background: rgba(255,255,255,.85); border-radius: 999px;
+    padding: 4px 12px; color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .doc-notes span b { color: var(--accent-green); }
+
+  /* ===== 模拟窗口 ===== */
+  .win {
+    background: var(--main-bg); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.08);
+    position: relative;
+  }
+  .win-titlebar {
+    height: 38px; background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; padding: 0 14px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .win-titlebar .name { margin: 0 auto; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .win-body { display: flex; position: relative; min-height: 720px; }
+
+  /* 模拟侧边栏（应用侧栏，保持不动） */
+  .fake-sidebar {
+    width: 190px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 14px 10px; flex-shrink: 0;
+    font-size: 13px; color: var(--text-primary);
+    display: flex; flex-direction: column;
+  }
+  .fake-sidebar .sec { font-size: 11px; color: var(--text-secondary); margin: 14px 8px 6px; }
+  .fake-sidebar .item { padding: 6px 8px; border-radius: 7px; display: flex; gap: 7px; align-items: center; }
+  .fake-sidebar .item.active { background: rgba(0,0,0,.07); font-weight: 600; }
+  .fake-sidebar .item.dim { color: var(--text-secondary); }
+  .fake-sidebar .user { display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 6px 8px; }
+  .fake-sidebar .uavatar {
+    width: 24px; height: 24px; border-radius: 50%; background: #e3e8f0; color: #5b7ba6;
+    font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ===== 新详情页主体：左右两大栏 ===== */
+  .detail { flex: 1; min-width: 0; display: flex; overflow: hidden; }
+
+  /* —— 左：会话区 —— */
+  .chat-pane {
+    width: 34%; flex-shrink: 0; min-width: 360px;
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    background: #fcfcfd;
+  }
+  .chat-head {
+    padding: 14px 16px 10px; display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0; border-bottom: 1px solid var(--border);
+  }
+  .chat-head .back {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12.5px; color: var(--text-secondary); cursor: pointer;
+    padding: 3px 7px; border-radius: 6px; flex-shrink: 0;
+  }
+  .chat-head .back:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
+  .chat-head .p-name {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 15px; font-weight: 700; min-width: 0;
+  }
+  .chat-head .p-name svg { color: var(--text-icon); flex-shrink: 0; }
+  .chat-head .p-name .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-head .badge { margin-left: auto; flex-shrink: 0; }
+  .chat-head .text-btn {
+    border: none; background: transparent; font-size: 12px; font-family: inherit;
+    color: var(--text-secondary); cursor: pointer; padding: 3px 6px; border-radius: 6px; flex-shrink: 0;
+  }
+  .chat-head .text-btn:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
+
+  /* 会话 tab（横向） */
+  .chat-tabs {
+    display: flex; align-items: stretch; gap: 2px;
+    padding: 8px 12px 0; border-bottom: 1px solid var(--border);
+    overflow-x: auto; flex-shrink: 0;
+  }
+  .chat-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: none; background: transparent; font-family: inherit;
+    font-size: 12.5px; color: var(--text-secondary);
+    padding: 6px 10px; cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .chat-tab:hover { color: var(--text-primary); }
+  .chat-tab.active { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--text-primary); }
+  .chat-tab .cnt {
+    font-size: 10.5px; background: var(--status-neutral-bg); color: var(--text-secondary);
+    border-radius: 999px; padding: 1px 7px;
+  }
+  .chat-tab .cnt.hot { background: var(--status-warning-bg); color: var(--status-warning); }
+  .chat-tab .new-tab {
+    border: 1px dashed var(--border); border-radius: 7px; background: transparent;
+    font-size: 12px; color: var(--text-secondary); cursor: pointer;
+    padding: 4px 10px; align-self: center; margin-left: 6px; flex-shrink: 0; white-space: nowrap;
+  }
+  .chat-tab .new-tab:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+  /* 会话消息流（复用 RunModal 消息语言） */
+  .chat-stream {
+    flex: 1; min-height: 0; overflow-y: auto;
+    padding: 16px 16px 8px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .run-msg.system {
+    align-self: center; font-size: 11.5px; color: #b0b0b0; padding: 2px 0;
+  }
+  .run-msg-row { display: flex; flex-direction: column; max-width: 86%; }
+  .run-msg-row.mine { align-self: flex-end; align-items: flex-end; }
+  .run-msg-name { font-size: 11px; color: var(--text-secondary); margin: 0 0 3px 34px; }
+  .run-msg-name.mine { margin: 0 34px 3px 0; }
+  .run-msg-content { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+  .run-msg-content.mine { flex-direction: row-reverse; }
+  .run-msg-avatar {
+    width: 26px; height: 26px; border-radius: 50%; color: #fff;
+    font-size: 12px; font-weight: 600; display: inline-flex;
+    align-items: center; justify-content: center; flex-shrink: 0; user-select: none;
+  }
+  .run-msg-bubble.ade {
+    background: #f2f2f4; border-radius: 12px 12px 12px 4px; padding: 8px 12px;
+  }
+  .run-msg-bubble.mine {
+    background: var(--status-success-bg); color: #1f6b36;
+    border-radius: 12px 12px 4px 12px; padding: 8px 12px;
+  }
+  .run-msg-text { font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+  .run-msg-bubble.mine .run-msg-text { color: #1f6b36; }
+
+  /* Gate 问题气泡（等待确认） */
+  .run-msg-bubble.ade.gate {
+    border-left: 3px solid var(--status-warning); background: #faf6f0;
+  }
+  .gate-title { font-size: 12.5px; font-weight: 600; color: var(--status-warning); margin-bottom: 4px; }
+  .gate-approver { font-size: 11.5px; color: var(--text-secondary); margin-top: 5px; display: flex; align-items: center; gap: 6px; }
+  .gate-approver .ga-avatar {
+    width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 9.5px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .gate-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  .btn-mini {
+    border: none; background: var(--text-primary); color: #fff; font-size: 12px; font-family: inherit;
+    height: 26px; padding: 0 12px; border-radius: 6px; cursor: pointer;
+  }
+  .btn-mini.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-mini.ghost:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+  /* 阶段性结果块（蓝色左边条） */
+  .result-block {
+    margin-top: 8px; border-left: 3px solid var(--status-info);
+    background: #f3f7fc; border-radius: 8px; padding: 8px 12px;
+  }
+  .result-block .r-summary { font-size: 12.5px; color: #24446e; line-height: 1.5; }
+  .result-block .r-files { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; }
+  .result-block .r-file {
+    font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px;
+    color: var(--status-info); text-decoration: underline; cursor: pointer; width: fit-content;
+  }
+  .result-block .r-jump {
+    margin-top: 7px; display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11.5px; color: var(--status-info); cursor: pointer; border: none;
+    background: transparent; font-family: inherit; padding: 0;
+  }
+  .result-block .r-jump:hover { text-decoration: underline; }
+
+  /* 会话输入框（RunModal 式） */
+  .chat-input {
+    flex-shrink: 0; padding: 10px 14px 14px; border-top: 1px solid var(--border); background: #fcfcfd;
+  }
+  .chat-input-box {
+    display: flex; align-items: flex-end; gap: 8px;
+    border: 1px solid var(--border); border-radius: 12px; background: #fff;
+    padding: 8px 10px;
+  }
+  .chat-input-box:focus-within { border-color: #c9c9cd; }
+  .chat-input textarea {
+    flex: 1; border: none; outline: none; resize: none; font-family: inherit;
+    font-size: 13px; line-height: 1.5; color: var(--text-primary);
+    min-height: 20px; background: transparent; height: 20px;
+  }
+  .chat-input .send-btn {
+    width: 28px; height: 28px; border-radius: 50%; border: none;
+    background: #6b7a5e; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; color: #fff;
+  }
+  .chat-input .hint { font-size: 11px; color: #b0b0b0; margin-top: 6px; padding-left: 4px; }
+
+  /* —— 右：项目配置区（横向 tab） —— */
+  .config-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .config-tabs {
+    display: flex; align-items: stretch; gap: 2px;
+    padding: 10px 20px 0; border-bottom: 1px solid var(--border);
+    overflow-x: auto; flex-shrink: 0;
+  }
+  .config-tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: none; background: transparent; font-family: inherit;
+    font-size: 12.5px; color: var(--text-secondary);
+    padding: 6px 10px; cursor: pointer; white-space: nowrap;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .config-tab svg { flex-shrink: 0; }
+  .config-tab:hover { color: var(--text-primary); }
+  .config-tab.active { color: var(--text-primary); font-weight: 600; border-bottom-color: var(--text-primary); }
+  .config-tab .soon { font-size: 10px; color: #c2c2c6; }
+  .config-tab .cnt {
+    font-size: 10.5px; background: var(--status-neutral-bg); color: var(--text-secondary);
+    border-radius: 999px; padding: 1px 7px;
+  }
+  .config-tab .cnt.hot { background: var(--status-danger-bg); color: var(--status-danger); }
+
+  .config-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 22px 26px; }
+  .config-body .maxw { max-width: 720px; }
+
+  /* 面板内容：Settings 式分组（与现有面板一致） */
+  .section-label-row { display: flex; align-items: center; justify-content: space-between; }
+  .section-label { font-size: 11.5px; color: #9a9a9a; margin: 18px 0 6px 4px; }
+  .section-label:first-child { margin-top: 2px; }
+  .section-action { margin: 18px 4px 6px 0; }
+  .section-card { background: var(--main-bg); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 44px; padding: 8px 16px; flex-wrap: wrap;
+  }
+  .settings-row + .settings-row { border-top: 1px solid var(--row-divider); }
+  .settings-row.clickable { cursor: pointer; }
+  .settings-row.clickable:hover { background: rgba(0,0,0,.025); }
+  .row-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .row-text { min-width: 0; display: flex; flex-direction: column; }
+  .row-title { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--text-primary); }
+  .row-title .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-sub { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 13.5px; color: var(--text-secondary); }
+  .badge { font-size: 11px; font-weight: 600; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+  .badge.success { color: var(--status-success); background: var(--status-success-bg); }
+  .badge.info { color: var(--status-info); background: var(--status-info-bg); }
+  .badge.neutral { color: var(--status-neutral); background: var(--status-neutral-bg); }
+  .badge.warning { color: var(--status-warning); background: var(--status-warning-bg); }
+  .badge.danger { color: var(--status-danger); background: var(--status-danger-bg); }
+  .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px; color: var(--text-secondary); }
+  .toggle {
+    width: 36px; height: 21px; border-radius: 999px; border: none; cursor: pointer;
+    background: #d8d8dc; position: relative; transition: background .15s; flex-shrink: 0;
+  }
+  .toggle .knob {
+    position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: left .15s;
+  }
+  .toggle.on { background: var(--accent-green); }
+  .toggle.on .knob { left: 17px; }
+  .text-btn {
+    border: none; background: transparent; font-size: 12px; font-family: inherit;
+    color: var(--text-secondary); cursor: pointer; padding: 3px 6px; border-radius: 6px;
+  }
+  .text-btn:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
+  .text-btn.danger { color: var(--status-danger); }
+  .text-btn.danger:hover { background: var(--status-danger-bg); }
+
+  .doc-foot { text-align: center; color: rgba(255,255,255,.85); font-size: 12px; margin-top: 12px; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+
+  /* 标注 */
+  .anno { position: absolute; z-index: 5; pointer-events: none; }
+  .anno .pin {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--accent-green); color: #fff; font-size: 11.5px; font-weight: 600;
+    border-radius: 999px; padding: 4px 10px; box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  }
+  .anno .pin b { font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <h1>项目中心 · 详情页会话布局 — UI Mock</h1>
+    <p>进入项目详情页：左侧改为会话区（消息流 + 插话输入），右侧改为项目配置区，原竖向导航全部变为横向 tab</p>
+  </div>
+  <div class="doc-notes">
+    <span><b>布局</b> 详情页左右两大栏：左 = 会话区（34%，可收起），右 = 项目配置（横向 tab）</span>
+    <span><b>会话区</b> 复用 RunModal 消息语言（ADE 左 / 人右 / 系统居中 / Gate 插问 / 阶段结果块）</span>
+    <span><b>横向 tab</b> 原 10 项竖向导航 → 顶部横向下划线式 tab，溢出可横向滚动</span>
+    <span><b>会话来源</b> 每个自动化任务阶段 = 独立会话（「跳转到会话」目标即左栏）</span>
+  </div>
+
+  <div class="win">
+    <div class="win-titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">Loom</span>
+    </div>
+    <div class="win-body">
+      <!-- 应用侧边栏（不动） -->
+      <div class="fake-sidebar">
+        <div class="sec">工作区</div>
+        <div class="item dim">💬 新对话</div>
+        <div class="item dim">🎨 定制</div>
+        <div class="item active">🗂 项目中心</div>
+        <div class="sec">项目</div>
+        <div class="item dim">📁 loomweb</div>
+        <div class="user"><span class="uavatar">S</span><span>shilu</span></div>
+      </div>
+
+      <!-- ══════════ 新详情页 ══════════ -->
+      <div class="detail">
+
+        <!-- 左：会话区 -->
+        <div class="chat-pane">
+          <div class="chat-head">
+            <span class="back">‹ 返回</span>
+            <span class="p-name">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              <span class="t">loomweb</span>
+            </span>
+            <span class="badge success">进行中</span>
+            <button class="text-btn">编辑</button>
+          </div>
+
+          <!-- 会话 tab：全部 / 会话列表 / + 新对话 -->
+          <div class="chat-tabs">
+            <button class="chat-tab active">💬 全部会话 <span class="cnt">6</span></button>
+            <button class="chat-tab">周报生成 <span class="cnt hot">2</span></button>
+            <button class="chat-tab">发布准备</button>
+            <button class="chat-tab">规范答疑</button>
+            <button class="new-tab">＋ 新对话</button>
+          </div>
+
+          <!-- 消息流 -->
+          <div class="chat-stream">
+            <div class="run-msg system">—— 周报生成 · 今日 08:00 自动触发 ——</div>
+
+            <div class="run-msg-row">
+              <span class="run-msg-name">研发工程师ADE</span>
+              <div class="run-msg-content">
+                <span class="run-msg-avatar" style="background:#7c66d8">A</span>
+                <div class="run-msg-bubble ade">
+                  <span class="run-msg-text">已拉取本周 47 个 MR，按成员分组统计中…</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 阶段性结果块 -->
+            <div class="run-msg-row">
+              <div class="run-msg-content">
+                <span class="run-msg-avatar" style="background:#7c66d8">A</span>
+                <div class="run-msg-bubble ade">
+                  <span class="run-msg-text">统计完成，进入汇总阶段。</span>
+                  <div class="result-block">
+                    <div class="r-summary">周报草稿已生成：本周 12 人提交 47 MR，代码审查一致率 92%。</div>
+                    <div class="r-files">
+                      <span class="r-file">dist/weekly-report-1014.md</span>
+                    </div>
+                    <button class="r-jump">↩ 跳转到会话</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Gate：等待确认（需要谁处理） -->
+            <div class="run-msg-row">
+              <span class="run-msg-name">研发工程师ADE</span>
+              <div class="run-msg-content">
+                <span class="run-msg-avatar" style="background:#7c66d8">A</span>
+                <div class="run-msg-bubble ade gate">
+                  <div class="gate-title">发布前人工确认</div>
+                  <span class="run-msg-text">构建产物已就绪，是否发布到预发环境？</span>
+                  <div class="gate-approver">
+                    <span class="ga-avatar" style="background:#5b7ba6">S</span>
+                    需要你确认
+                  </div>
+                  <div class="gate-actions">
+                    <button class="btn-mini ghost">拒绝</button>
+                    <button class="btn-mini">批准</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 人消息（右绿气泡） -->
+            <div class="run-msg-row mine">
+              <span class="run-msg-name mine">shilu</span>
+              <div class="run-msg-content mine">
+                <div class="run-msg-bubble mine">
+                  <span class="run-msg-text">批准，注意走灰度。</span>
+                </div>
+                <span class="run-msg-avatar" style="background:#5b7ba6">S</span>
+              </div>
+            </div>
+
+            <!-- 其他成员插话 -->
+            <div class="run-msg-row mine">
+              <span class="run-msg-name mine">wang</span>
+              <div class="run-msg-content mine">
+                <div class="run-msg-bubble mine">
+                  <span class="run-msg-text">预发验证通过后再全量。</span>
+                </div>
+                <span class="run-msg-avatar" style="background:#b2854f">W</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 插话输入框 -->
+          <div class="chat-input">
+            <div class="chat-input-box">
+              <textarea placeholder="插话：向正在执行的 ADE 发送指令…"></textarea>
+              <button class="send-btn">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+            <p class="hint">消息会送达当前运行的 ADE，空闲会话则转为新任务指令</p>
+          </div>
+        </div>
+
+        <!-- 右：项目配置（横向 tab） -->
+        <div class="config-pane">
+          <div class="config-tabs">
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              项目规范
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 7 4 12 9 17"/><polyline points="15 7 20 12 15 17"/></svg>
+              代码
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              项目成员
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M8 16h8"/></svg>
+              项目ADE
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              知识记忆
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              自动化任务 <span class="cnt hot">2</span>
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              自动化统计
+            </button>
+            <button class="config-tab active">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              代码审查
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              安全审查
+            </button>
+            <button class="config-tab">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2v7.31"/><path d="M14 9.3V1.99"/><path d="M8 9.3V6.99"/><path d="M16 9.3V6.99"/><rect x="6" y="9" width="12" height="13" rx="2"/><path d="M2 22h20"/></svg>
+              测试 <span class="soon">敬请期待</span>
+            </button>
+          </div>
+
+          <!-- 面板内容（示例：代码审查 → 审查队列） -->
+          <div class="config-body">
+            <div class="maxw">
+              <div class="section-label-row">
+                <span class="section-label">审查队列 · 待复审 2</span>
+                <button class="text-btn section-action">仅看待复审</button>
+              </div>
+              <div class="section-card">
+                <div class="settings-row clickable">
+                  <div class="row-main">
+                    <div class="row-text">
+                      <span class="row-title">
+                        <span class="badge info">待复审</span>
+                        <span class="t">feat: 结算页灰度开关</span>
+                      </span>
+                      <span class="row-sub">shilu · <span class="mono">feature/gray-switch → dev</span> · <span style="color:var(--status-success)">+182</span> <span style="color:var(--status-danger)">-36</span></span>
+                    </div>
+                    <div class="row-right">
+                      <span class="badge warning">仅 ADE 1</span>
+                      <button class="text-btn">对比 ›</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-row clickable">
+                  <div class="row-main">
+                    <div class="row-text">
+                      <span class="row-title">
+                        <span class="badge info">待复审</span>
+                        <span class="t">fix: 会话消息时间戳溢出</span>
+                      </span>
+                      <span class="row-sub">wang · <span class="mono">fix/timestamp → dev</span> · <span style="color:var(--status-success)">+41</span> <span style="color:var(--status-danger)">-8</span></span>
+                    </div>
+                    <div class="row-right">
+                      <span class="badge danger">漏检 1</span>
+                      <button class="text-btn">对比 ›</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-row clickable">
+                  <div class="row-main">
+                    <div class="row-text">
+                      <span class="row-title">
+                        <span class="badge success">已通过</span>
+                        <span class="t">chore: 升级 vite 至 5.4</span>
+                      </span>
+                      <span class="row-sub">luyu · <span class="mono">chore/deps → dev</span> · <span style="color:var(--status-success)">+96</span> <span style="color:var(--status-danger)">-92</span></span>
+                    </div>
+                    <div class="row-right">
+                      <span class="badge neutral">一致率 100%</span>
+                      <span class="text-btn">回看 ›</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-label-row">
+                <span class="section-label">本次裁决进度</span>
+                <button class="text-btn">打回 MR</button>
+              </div>
+              <div class="section-card">
+                <div class="settings-row">
+                  <div class="row-main">
+                    <div class="row-text">
+                      <span class="row-title"><span class="t">已裁决 1 / 未裁决 1（完成前不可确认通过）</span></span>
+                    </div>
+                  </div>
+                  <div class="row-right">
+                    <button class="text-btn danger">打回 MR</button>
+                    <button class="btn-mini" disabled style="opacity:.5;cursor:not-allowed">确认通过</button>
+                  </div>
+                </div>
+              </div>
+
+              <p class="doc-foot" style="text-align:left; color:#b0b0b0; text-shadow:none; margin-top:10px; padding-left:4px">
+                * 右栏为现有 10 个面板的容器，仅切换为横向 tab；面板内部结构不变（示意用代码审查面板）
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-foot">
+    Mock 说明：左会话区与右配置 tab 均为纯静态示意；tab 计数徽标（自动化任务 2 = 待人工处理数）沿用通知中心联动逻辑
+  </div>
+</div>
+</body>
+</html>

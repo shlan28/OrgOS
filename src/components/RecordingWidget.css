@@ -1,0 +1,396 @@
+/* ===== 录音小窗（fixed 浮窗：默认主区右上角，头部可拖动） ===== */
+
+.rec-widget {
+  position: fixed;
+  width: 228px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.13);
+  padding: 11px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 60;
+  animation: rec-pop-in 0.18s ease;
+}
+
+@keyframes rec-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 拖动中：全局禁选中 */
+body.rec-dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+
+/* 头部：呼吸圆点/文件名 + 计时 + ×（拖拽把手） */
+.rec-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: grab;
+  min-width: 0;
+}
+
+.rec-head:active {
+  cursor: grabbing;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-danger, #d64545);
+  animation: rec-breathe 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.rec-widget.stopped .rec-dot {
+  animation: none;
+  opacity: 0.6;
+}
+
+@keyframes rec-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(214, 69, 69, 0.25);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 4px rgba(214, 69, 69, 0.12);
+  }
+}
+
+.rec-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* 已停止：文件行（icon + 录音.mp3） */
+.rec-file-icon {
+  color: var(--status-danger, #d64545);
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.rec-file-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rec-timer {
+  margin-left: auto;
+  font-family: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--status-danger, #d64545);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rec-timer.stopped-time {
+  color: var(--text-secondary);
+}
+
+/* 关闭 × */
+.rec-close {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.rec-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}
+
+/* 音柱动效条（CSS 模拟波形；停止后静止） */
+.rec-wave {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px;
+  height: 26px;
+  padding: 0 2px;
+}
+
+.rec-bar {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(214, 69, 69, 0.75);
+  animation: rec-bounce 1.4s ease-in-out infinite;
+  transform-origin: center;
+  min-width: 2px;
+  transform: scaleY(0.4);
+}
+
+.rec-widget.stopped .rec-bar {
+  animation: none;
+}
+
+@keyframes rec-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(0.9);
+  }
+}
+
+/* 转写预览（只展示最近一句，随推进替换 + 淡入） */
+.rec-transcript {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--badge-bg, #f0f0f2);
+  border-radius: 8px;
+  padding: 7px 9px;
+  min-height: 34px;
+  overflow-y: auto;
+  word-break: break-all;
+  animation: rec-line-in 0.25s ease;
+}
+
+@keyframes rec-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 底部操作区 */
+.rec-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 停止（录音中主操作，红） */
+.rec-stop-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: none;
+  border-radius: 9px;
+  background: var(--status-danger-bg, #faeaea);
+  color: var(--status-danger, #d64545);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  height: 30px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rec-stop-btn:hover {
+  background: #f2dcdc;
+}
+
+/* 继续录音（已停止态：恢复同一段录音继续计时） */
+.rec-resume-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  border-radius: 9px;
+  background: var(--status-danger-bg, #faeaea);
+  color: var(--status-danger, #d64545);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  height: 30px;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rec-resume-btn:hover {
+  background: #f2dcdc;
+}
+
+/* 加入输入框（已停止态主操作，绿） */
+.rec-add-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9px;
+  background: var(--status-success-bg, #e8f2ea);
+  color: var(--status-success, #2e8b47);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  height: 30px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.rec-add-btn:hover {
+  background: #dcebe1;
+}
+
+/* 详情：占位禁用（独立录音详情页后续接入） */
+.rec-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12.5px;
+  height: 30px;
+  padding: 0 12px;
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ===== @ 引用弹出菜单（含「长录音」入口，视觉同 Dropdown 菜单） ===== */
+
+.at-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.at-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 132px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.at-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  background: transparent;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.at-menu-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.at-menu-item svg {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ===== 录音文件附件条（输入卡片内，textarea 上方） ===== */
+
+.rec-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--badge-bg, #f0f0f2);
+  padding: 7px 8px 7px 11px;
+  margin-bottom: 10px;
+  animation: rec-pop-in 0.18s ease;
+}
+
+.rec-chip-icon {
+  color: var(--status-danger, #d64545);
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.rec-chip-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.rec-chip-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.rec-chip-meta {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rec-chip-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.rec-chip-remove:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}

@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>首页 · 多视窗（4 窗口切分） — 设计图 v2</title>
+<style>
+  :root {
+    --sidebar-bg: #f5f5f7;
+    --main-bg: #ffffff;
+    --border: #e5e5e5;
+    --row-divider: #f0f0f0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #888888;
+    --text-icon: #5f5f5f;
+    --accent-green: #2e8b47;
+    --status-success: #2e8b47;
+    --status-success-bg: #e8f2ea;
+    --status-info: #3b78c9;
+    --status-info-bg: #e9f0f9;
+    --status-neutral: #9a9a9a;
+    --status-neutral-bg: #f0f0f2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, #d8dee8 0%, #c3ccd9 50%, #b8c2d2 100%);
+    padding: 40px 24px 64px;
+  }
+  .doc { max-width: 1280px; margin: 0 auto; }
+  .doc-head { text-align: center; margin-bottom: 28px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-head h1 { font-size: 26px; margin-bottom: 8px; }
+  .doc-head p { font-size: 13px; opacity: .85; }
+  .doc-notes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 28px; }
+  .doc-notes span {
+    font-size: 12px; background: rgba(255,255,255,.85); border-radius: 999px;
+    padding: 4px 12px; color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .doc-notes span b { color: var(--accent-green); }
+  .win-cap { display: flex; align-items: baseline; gap: 12px; margin: 44px 0 14px; }
+  .win-cap .tag {
+    font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--accent-green); border-radius: 6px; padding: 3px 9px; flex-shrink: 0;
+  }
+  .win-cap h2 { font-size: 16px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .win-cap .sub { font-size: 12.5px; color: #fff; opacity: .85; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-foot { text-align: center; color: rgba(255,255,255,.85); font-size: 12px; margin-top: 16px; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+
+  /* ===== 模拟窗口 ===== */
+  .win {
+    background: var(--main-bg); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.08);
+    position: relative;
+  }
+  .win-titlebar {
+    height: 38px; background: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; padding: 0 14px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .win-titlebar .name { margin: 0 auto; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .win-body { display: flex; position: relative; }
+  .win-body.with-grid { min-height: 760px; }
+
+  /* 模拟应用侧边栏 */
+  .fake-sidebar {
+    width: 190px; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    padding: 14px 10px; flex-shrink: 0;
+    font-size: 13px; color: var(--text-primary);
+    display: flex; flex-direction: column;
+  }
+  .fake-sidebar .sec { font-size: 11px; color: var(--text-secondary); margin: 14px 8px 6px; }
+  .fake-sidebar .item { padding: 6px 8px; border-radius: 7px; display: flex; gap: 7px; align-items: center; }
+  .fake-sidebar .item.active { background: rgba(0,0,0,.07); font-weight: 600; }
+  .fake-sidebar .item.dim { color: var(--text-secondary); }
+  .fake-sidebar .user { display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 6px 8px; }
+  .fake-sidebar .uavatar {
+    width: 24px; height: 24px; border-radius: 50%; background: #e3e8f0; color: #5b7ba6;
+    font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* ===== 首页多视窗区（主区） ===== */
+  .home-grid {
+    flex: 1; min-width: 0; position: relative;
+    background: var(--main-bg);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .grid-toolbar {
+    position: absolute; top: 10px; right: 14px; z-index: 20;
+    display: flex; gap: 4px;
+  }
+  .grid-btn {
+    width: 30px; height: 30px; border: none; border-radius: 8px;
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .grid-btn:hover { background: rgba(0,0,0,.05); color: var(--text-primary); }
+  .grid-btn.active { background: rgba(0,0,0,.07); color: var(--text-primary); }
+  .grid-btn.active .cnt {
+    position: absolute; top: 2px; right: 2px;
+    min-width: 14px; height: 14px; border-radius: 999px;
+    background: var(--status-info); color: #fff;
+    font-size: 9.5px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0 3px; border: 2px solid #fff;
+  }
+
+  /* 2×2 四窗格 */
+  .quad {
+    flex: 1; min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+  }
+  .pane {
+    background: var(--main-bg);
+    min-width: 0; min-height: 0;
+    display: flex; flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  .pane.focus { box-shadow: inset 0 0 0 2px rgba(46, 139, 71, .35); }
+
+  /* 每个窗格统一：标题栏 + 消息流（/空状态）+ 底部简化输入条 */
+  .pane-head {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 10px; border-bottom: 1px solid var(--row-divider);
+    flex-shrink: 0; background: #fcfcfd;
+  }
+  .pane-head .ph-title {
+    font-size: 12px; font-weight: 600; color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .pane-head .ph-title svg { color: var(--text-icon); flex-shrink: 0; }
+  .pane-head .badge {
+    font-size: 10px; font-weight: 600; border-radius: 999px; padding: 1px 7px; white-space: nowrap; flex-shrink: 0;
+  }
+  .pane-head .badge.info { color: var(--status-info); background: var(--status-info-bg); }
+  .pane-head .badge.success { color: var(--status-success); background: var(--status-success-bg); }
+  .pane-head .pane-x {
+    width: 20px; height: 20px; border-radius: 6px; border: none; background: transparent;
+    font-size: 13px; line-height: 1; color: #c2c2c6; cursor: pointer; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pane-head .pane-x:hover { background: rgba(0,0,0,.08); color: var(--text-primary); }
+
+  /* 消息流（缩放版会话消息语言） */
+  .pane-stream {
+    flex: 1; min-height: 0; overflow: hidden;
+    padding: 10px 12px 6px;
+    display: flex; flex-direction: column; gap: 9px;
+    background: #fff;
+  }
+  .pm-row { display: flex; flex-direction: column; max-width: 90%; }
+  .pm-row.mine { align-self: flex-end; align-items: flex-end; }
+  .pm-name { font-size: 10px; color: var(--text-secondary); margin: 0 0 2px 26px; }
+  .pm-name.mine { margin: 0 26px 2px 0; }
+  .pm-content { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
+  .pm-content.mine { flex-direction: row-reverse; }
+  .pm-avatar {
+    width: 22px; height: 22px; border-radius: 50%; color: #fff;
+    font-size: 10.5px; font-weight: 600; display: inline-flex;
+    align-items: center; justify-content: center; flex-shrink: 0; user-select: none;
+  }
+  .pm-bubble.ade { background: #f2f2f4; border-radius: 10px 10px 10px 3px; padding: 6px 10px; }
+  .pm-bubble.mine {
+    background: var(--status-success-bg); color: #1f6b36;
+    border-radius: 10px 10px 3px 10px; padding: 6px 10px;
+  }
+  .pm-text { font-size: 11.5px; line-height: 1.5; color: var(--text-primary); }
+  .pm-bubble.mine .pm-text { color: #1f6b36; }
+
+  /* 空会话消息流（新对话窗格：居中轻提示，无大标题） */
+  .pane-empty-stream {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px;
+  }
+  .pane-empty-stream .es-icon {
+    width: 34px; height: 34px; border-radius: 10px; background: #f2f2f4;
+    color: var(--text-secondary);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pane-empty-stream .es-text { font-size: 12.5px; color: var(--text-secondary); }
+  .pane-empty-stream .es-hint { font-size: 11px; color: #b0b0b0; }
+
+  /* ===== 底部简化输入条（每格一条） ===== */
+  .pane-input {
+    flex-shrink: 0; padding: 8px 10px 10px; background: #fcfcfd;
+    border-top: 1px solid var(--row-divider);
+  }
+  .pi-bar {
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border); border-radius: 12px; background: #fff;
+    padding: 4px 5px 4px 4px;
+    position: relative;
+  }
+  .pi-bar:focus-within { border-color: #d0d0d4; }
+  .pi-plus {
+    width: 24px; height: 24px; border: none; border-radius: 8px;
+    background: transparent; color: var(--text-icon); cursor: pointer; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pi-plus:hover { background: rgba(0,0,0,.05); color: var(--text-primary); }
+  .pi-bar textarea {
+    flex: 1; border: none; outline: none; resize: none; font-family: inherit;
+    font-size: 11.5px; line-height: 1.45; color: var(--text-primary);
+    background: transparent; height: 18px; min-width: 0;
+  }
+  .pi-bar textarea::placeholder { color: #b0b0b0; }
+  .pi-send {
+    width: 24px; height: 24px; border-radius: 50%; border: none;
+    background: #a8b09a; color: #fff; cursor: not-allowed; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pi-send.ok { background: #6b7a5e; cursor: pointer; }
+
+  /* ＋ 功能菜单 */
+  .pi-menu {
+    position: absolute; bottom: calc(100% + 6px); left: 0;
+    width: 218px; background: #fff; border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,.16);
+    padding: 5px; z-index: 30;
+  }
+  .pi-menu .pm-group { font-size: 10px; color: #b0b0b0; margin: 4px 7px 3px; }
+  .pi-menu .pm-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5.5px 7px; border-radius: 8px; cursor: pointer;
+    font-size: 12px; color: var(--text-primary);
+  }
+  .pi-menu .pm-item svg { color: var(--text-icon); flex-shrink: 0; }
+  .pi-menu .pm-item:hover { background: rgba(0,0,0,.045); }
+  .pi-menu .pm-item .val {
+    margin-left: auto; font-size: 10.5px; color: var(--text-secondary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 96px;
+  }
+  .pi-menu .pm-item .val.green { color: var(--accent-green); }
+  .pi-menu .pm-sep { height: 1px; background: var(--row-divider); margin: 4px 6px; }
+
+  /* 空窗格（未分配会话：无输入条） */
+  .pane-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px;
+    color: var(--text-secondary);
+  }
+  .pane-empty svg { color: #c2c2c6; }
+  .pane-empty .pe-text { font-size: 12.5px; }
+  .pane-empty .pe-hint { font-size: 11px; color: #b0b0b0; }
+  .pane-empty .pe-btn {
+    margin-top: 4px; border: 1px dashed var(--border); background: transparent;
+    font-family: inherit; font-size: 12px; color: var(--text-secondary);
+    border-radius: 8px; padding: 5px 14px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .pane-empty .pe-btn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+
+  /* ===== 状态3：底部输入条放大细节 ===== */
+  .detail-stage {
+    background: var(--sidebar-bg); border: 1px solid var(--border);
+    border-radius: 14px; padding: 26px 26px 22px;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .detail-stage .ds-label {
+    font-size: 11px; color: var(--text-secondary); margin-bottom: -14px; margin-left: 2px;
+  }
+  .pi-bar.lg { padding: 7px 7px 7px 6px; border-radius: 14px; }
+  .pi-bar.lg .pi-plus { width: 28px; height: 28px; }
+  .pi-bar.lg textarea { font-size: 13px; height: 22px; }
+  .pi-bar.lg .pi-send { width: 28px; height: 28px; }
+  .pi-bar.lg .pi-menu { width: 250px; }
+
+  /* 标注 */
+  .anno { position: absolute; z-index: 5; pointer-events: none; }
+  .anno .pin {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--accent-green); color: #fff; font-size: 11.5px; font-weight: 600;
+    border-radius: 999px; padding: 4px 10px; box-shadow: 0 4px 12px rgba(0,0,0,.18);
+  }
+  .anno .pin b { font-size: 13px; }
+  .stage-anno .pin {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--accent-green); color: #fff; font-size: 11.5px; font-weight: 600;
+    border-radius: 999px; padding: 4px 10px; box-shadow: 0 4px 12px rgba(0,0,0,.18);
+    margin-bottom: 8px;
+  }
+  .stage-anno .pin b { font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <h1>首页 · 多视窗 — UI Mock v2</h1>
+    <p>右上角「多视窗」btn 切分 2×2 四窗格；每格统一为「标题栏 + 消息流 + 底部简化输入条」，输入条功能全部收进 ＋ btn</p>
+  </div>
+  <div class="doc-notes">
+    <span><b>入口</b> 首页右上角单 btn，激活态高亮 + 窗口数角标（替代原电脑 + 侧边栏两个 icon）</span>
+    <span><b>窗格</b> 四格统一：标题栏（会话名 + 徽标 + ×）+ 消息流 + 底部输入条（新对话不再居中大卡片）</span>
+    <span><b>输入条</b> 极简三件套：＋ 功能入口 + 单行输入 + 发送；附件/@/模式/模型全收进 ＋ 菜单</span>
+    <span><b>空窗格</b> 占位 + 「＋ 打开会话」；再点 btn 恢复单窗口</span>
+  </div>
+
+  <!-- ══════════ 状态 1：切分后（四窗格） ══════════ -->
+  <div class="win-cap">
+    <span class="tag">状态 1</span>
+    <h2>多视窗模式（2×2 四窗格）</h2>
+    <span class="sub">当前会话进左上（绿描边聚焦）；四格同构，输入条全部下置到每格底部</span>
+  </div>
+  <div class="win">
+    <div class="win-titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">Loom</span>
+    </div>
+    <div class="win-body with-grid">
+      <div class="fake-sidebar">
+        <div class="sec">工作区</div>
+        <div class="item active">💬 新对话</div>
+        <div class="item dim">🎨 定制</div>
+        <div class="item dim">🗂 项目中心</div>
+        <div class="sec">项目</div>
+        <div class="item dim">📁 loomweb</div>
+        <div class="user"><span class="uavatar">S</span><span>shilu</span></div>
+      </div>
+
+      <div class="home-grid">
+        <div class="grid-toolbar">
+          <button class="grid-btn active" title="多视窗：切换 2×2 四窗格">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="8" height="7.5" rx="1.6"/>
+              <rect x="13" y="3" width="8" height="7.5" rx="1.6"/>
+              <rect x="3" y="12.5" width="8" height="7.5" rx="1.6"/>
+              <rect x="13" y="12.5" width="8" height="7.5" rx="1.6"/>
+            </svg>
+            <span class="cnt">4</span>
+          </button>
+        </div>
+
+        <div class="quad">
+          <!-- ① 左上：当前会话（新对话 · 空消息流 + 底部输入条） -->
+          <div class="pane focus">
+            <div class="pane-head">
+              <span class="ph-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 6.5l3 3L10 17l-3.8.8L7 14l7.5-7.5z"/><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>
+                新对话
+              </span>
+              <span class="badge info">当前会话</span>
+              <button class="pane-x" title="关闭窗格">×</button>
+            </div>
+            <div class="pane-empty-stream">
+              <span class="es-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <span class="es-text">发送消息，开始新对话</span>
+              <span class="es-hint">📁 loomweb · ⎇ dev</span>
+            </div>
+            <div class="pane-input">
+              <div class="pi-bar">
+                <button class="pi-plus" title="功能菜单">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                </button>
+                <textarea placeholder="消息…"></textarea>
+                <span class="pi-send ok">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ② 右上：已打开的会话 -->
+          <div class="pane">
+            <div class="pane-head">
+              <span class="ph-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                周报生成 · 汇总统计
+              </span>
+              <span class="badge success">● 运行中 3/5</span>
+              <button class="pane-x" title="关闭窗格">×</button>
+            </div>
+            <div class="pane-stream">
+              <div class="pm-row">
+                <span class="pm-name">研发工程师ADE</span>
+                <div class="pm-content">
+                  <span class="pm-avatar" style="background:#7c66d8">A</span>
+                  <div class="pm-bubble ade"><span class="pm-text">已拉取本周 47 个 MR，按成员分组统计中…</span></div>
+                </div>
+              </div>
+              <div class="pm-row mine">
+                <span class="pm-name mine">shilu</span>
+                <div class="pm-content mine">
+                  <div class="pm-bubble mine"><span class="pm-text">先发草稿到群里。</span></div>
+                  <span class="pm-avatar" style="background:#5b7ba6">S</span>
+                </div>
+              </div>
+              <div class="pm-row">
+                <span class="pm-name">研发工程师ADE</span>
+                <div class="pm-content">
+                  <span class="pm-avatar" style="background:#7c66d8">A</span>
+                  <div class="pm-bubble ade"><span class="pm-text">草稿已生成：looms/周报/第42周.md，请确认。</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="pane-input">
+              <div class="pi-bar">
+                <button class="pi-plus" title="功能菜单">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                </button>
+                <textarea placeholder="插话…"></textarea>
+                <span class="pi-send">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ③ 左下：空窗格（未分配） -->
+          <div class="pane">
+            <div class="pane-head">
+              <span class="ph-title" style="color:#b0b0b0">未分配</span>
+              <button class="pane-x" title="关闭窗格">×</button>
+            </div>
+            <div class="pane-empty">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="pe-text">此窗格还没有会话</span>
+              <span class="pe-hint">打开一个历史会话，或新开对话</span>
+              <button class="pe-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                打开会话
+              </button>
+            </div>
+          </div>
+
+          <!-- ④ 右下：空窗格（未分配） -->
+          <div class="pane">
+            <div class="pane-head">
+              <span class="ph-title" style="color:#b0b0b0">未分配</span>
+              <button class="pane-x" title="关闭窗格">×</button>
+            </div>
+            <div class="pane-empty">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="pe-text">此窗格还没有会话</span>
+              <span class="pe-hint">打开一个历史会话，或新开对话</span>
+              <button class="pe-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                打开会话
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 标注 -->
+        <div class="anno" style="top: 46px; right: 56px;">
+          <span class="pin"><b>1</b> 多视窗 btn（激活态 · 窗口数角标）</span>
+        </div>
+        <div class="anno" style="top: 168px; left: 236px;">
+          <span class="pin"><b>2</b> 左上 = 当前会话（新对话：空消息流 + 底部输入条，不再居中大卡片）</span>
+        </div>
+        <div class="anno" style="top: 168px; right: 190px;">
+          <span class="pin"><b>3</b> 右上 = 会话窗格（消息流 + 底部输入条）</span>
+        </div>
+        <div class="anno" style="bottom: 128px; left: 330px;">
+          <span class="pin"><b>4</b> 空窗格：占位 +「＋ 打开会话」（未分配时不显示输入条）</span>
+        </div>
+        <div class="anno" style="bottom: 34px; right: 190px;">
+          <span class="pin"><b>5</b> 输入条下置每格底部：＋ 功能 / 单行输入 / 发送</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 状态 2：空窗格「打开会话」选择器 ══════════ -->
+  <div class="win-cap">
+    <span class="tag">状态 2</span>
+    <h2>空窗格「打开会话」选择器</h2>
+    <span class="sub">点空窗格「＋ 打开会话」→ 弹出会话选择菜单（历史会话 / 新对话），选中即装入该窗格并出现输入条</span>
+  </div>
+  <div class="win">
+    <div class="win-titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">Loom</span>
+    </div>
+    <div class="win-body with-grid" style="min-height: 560px;">
+      <div class="fake-sidebar">
+        <div class="sec">工作区</div>
+        <div class="item active">💬 新对话</div>
+        <div class="item dim">🎨 定制</div>
+        <div class="item dim">🗂 项目中心</div>
+        <div class="sec">项目</div>
+        <div class="item dim">📁 loomweb</div>
+        <div class="user"><span class="uavatar">S</span><span>shilu</span></div>
+      </div>
+
+      <div class="home-grid">
+        <div class="grid-toolbar">
+          <button class="grid-btn active" title="多视窗：切换 2×2 四窗格">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="8" height="7.5" rx="1.6"/>
+              <rect x="13" y="3" width="8" height="7.5" rx="1.6"/>
+              <rect x="3" y="12.5" width="8" height="7.5" rx="1.6"/>
+              <rect x="13" y="12.5" width="8" height="7.5" rx="1.6"/>
+            </svg>
+            <span class="cnt">4</span>
+          </button>
+        </div>
+
+        <div class="quad">
+          <div class="pane focus">
+            <div class="pane-head">
+              <span class="ph-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 6.5l3 3L10 17l-3.8.8L7 14l7.5-7.5z"/><rect x="3.5" y="3.5" width="17" height="17" rx="3"/></svg>
+                新对话
+              </span>
+              <span class="badge info">当前会话</span>
+              <button class="pane-x">×</button>
+            </div>
+            <div class="pane-empty-stream">
+              <span class="es-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              <span class="es-text">发送消息，开始新对话</span>
+              <span class="es-hint">📁 loomweb · ⎇ dev</span>
+            </div>
+            <div class="pane-input">
+              <div class="pi-bar">
+                <button class="pi-plus" title="功能菜单">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                </button>
+                <textarea placeholder="消息…"></textarea>
+                <span class="pi-send"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pane">
+            <div class="pane-head">
+              <span class="ph-title">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                周报生成 · 汇总统计
+              </span>
+              <span class="badge success">● 运行中 3/5</span>
+              <button class="pane-x">×</button>
+            </div>
+            <div class="pane-stream">
+              <div class="pm-row">
+                <span class="pm-name">研发工程师ADE</span>
+                <div class="pm-content">
+                  <span class="pm-avatar" style="background:#7c66d8">A</span>
+                  <div class="pm-bubble ade"><span class="pm-text">草稿已生成：looms/周报/第42周.md</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="pane-input">
+              <div class="pi-bar">
+                <button class="pi-plus" title="功能菜单">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                </button>
+                <textarea placeholder="插话…"></textarea>
+                <span class="pi-send"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 左下：空窗格 + 会话选择浮层 -->
+          <div class="pane" style="background:#fafafa;">
+            <div class="pane-head">
+              <span class="ph-title" style="color:#b0b0b0">未分配</span>
+              <button class="pane-x">×</button>
+            </div>
+            <div class="pane-empty">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="pe-text">此窗格还没有会话</span>
+              <span class="pe-hint">打开一个历史会话，或新开对话</span>
+              <button class="pe-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                打开会话
+              </button>
+            </div>
+
+            <!-- 会话选择浮层 -->
+            <div style="
+              position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+              width: 250px; background: #fff; border: 1px solid var(--border);
+              border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,.16);
+              padding: 6px; z-index: 30; font-size: 12px;
+            ">
+              <div style="display:flex; align-items:center; gap:6px; border:1px solid var(--border); border-radius:8px; padding:5px 8px; margin-bottom:6px; color:#b0b0b0;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="6.5"/><line x1="15.8" y1="15.8" x2="20.5" y2="20.5"/></svg>
+                搜索会话…
+              </div>
+              <div style="font-size:10.5px; color:var(--text-secondary); margin:4px 6px 4px;">新对话</div>
+              <div style="display:flex; align-items:center; gap:7px; padding:6px 7px; border-radius:8px; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-icon)"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M14.5 6.5l3 3L10 17l-3.8.8L7 14l7.5-7.5z"/></svg>
+                <span style="flex:1;">空白新对话</span>
+              </div>
+              <div style="font-size:10.5px; color:var(--text-secondary); margin:6px 6px 4px;">历史会话 · loomweb</div>
+              <div style="display:flex; align-items:center; gap:7px; padding:6px 7px; border-radius:8px; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-icon)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">发布准备 · 版本 v1.4.0</span>
+                <span style="font-size:9.5px; color:var(--status-info); background:var(--status-info-bg); border-radius:999px; padding:1px 6px; font-weight:600;">Gate</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; padding:6px 7px; border-radius:8px; cursor:pointer; background:rgba(0,0,0,.045);">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-icon)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">规范答疑 · coding-standards</span>
+                <span style="font-size:9.5px; color:var(--text-secondary); background:var(--status-neutral-bg); border-radius:999px; padding:1px 6px; font-weight:600;">手动</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:7px; padding:6px 7px; border-radius:8px; cursor:pointer;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-icon)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">登录页重构 · 讨论稿</span>
+                <span style="font-size:9.5px; color:var(--text-secondary); background:var(--status-neutral-bg); border-radius:999px; padding:1px 6px; font-weight:600;">手动</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pane">
+            <div class="pane-head">
+              <span class="ph-title" style="color:#b0b0b0">未分配</span>
+              <button class="pane-x">×</button>
+            </div>
+            <div class="pane-empty">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span class="pe-text">此窗格还没有会话</span>
+              <span class="pe-hint">打开一个历史会话，或新开对话</span>
+              <button class="pe-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+                打开会话
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ 状态 3：底部输入条放大细节（＋ 菜单展开） ══════════ -->
+  <div class="win-cap">
+    <span class="tag">状态 3</span>
+    <h2>底部简化输入条 · 细节</h2>
+    <span class="sub">1:1 尺寸放大：输入条三件套（＋ / 输入 / 发送）；＋ 菜单收纳原工具栏全部功能，选中项右移显示当前值</span>
+  </div>
+  <div class="win" style="padding: 0;">
+    <div class="detail-stage">
+      <!-- a) ＋ 菜单展开态 -->
+      <div class="stage-anno">
+        <span class="pin"><b>a</b> ＋ 菜单展开：附件 / 引用 / 模式 / 模型 全部收进这里（菜单从输入条上方弹出）</span>
+      </div>
+      <div style="padding: 34px 8px 6px; display:flex; justify-content:flex-start;">
+        <div class="pi-bar lg" style="width: 480px;">
+          <button class="pi-plus" title="功能菜单" style="background:rgba(0,0,0,.07); color:var(--text-primary);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+          </button>
+          <textarea placeholder="消息…"></textarea>
+          <span class="pi-send">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
+          </span>
+          <div class="pi-menu">
+            <div class="pm-group">插入</div>
+            <div class="pm-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21.5 15.5l-4.6-4.6"/><path d="M18 8l-4-4-3.2 3.2a2.2 2.2 0 0 0 0 3.1l1.5 1.5-3 3L4.5 11 10 5.5l1.5 1.5a2.2 2.2 0 0 0 3.1 0L19 2.5l2.5 2.5-4 4"/></svg>
+              <span>添加附件</span>
+            </div>
+            <div class="pm-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3.6"/><path d="M15.6 12v1.4a2.4 2.4 0 0 0 4.8 0V12a8.4 8.4 0 1 0-3.3 6.7"/></svg>
+              <span>引用 · @ 长录音</span>
+            </div>
+            <div class="pm-sep"></div>
+            <div class="pm-group">设置</div>
+            <div class="pm-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 7 4 12 9 17"/><polyline points="15 7 20 12 15 17"/></svg>
+              <span>编辑模式</span>
+              <span class="val green">自动接受编辑</span>
+            </div>
+            <div class="pm-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2.5 5 13.5h5.5L11 21.5l8-11h-5.5L13 2.5z"/></svg>
+              <span>运行模式</span>
+              <span class="val">默认模式</span>
+            </div>
+            <div class="pm-item">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4.5" y="8" width="15" height="11" rx="2.5"/><line x1="12" y1="4.5" x2="12" y2="8"/><circle cx="12" cy="3.5" r="1"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9.5 16.2h5"/></svg>
+              <span>模型</span>
+              <span class="val">翼构 · qwen3.8-max</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- b) 两态对比 -->
+      <div class="stage-anno">
+        <span class="pin"><b>b</b> 两态对比：空态（发送灰置底）/ 有内容（发送点亮，Enter 直发）</span>
+      </div>
+      <div style="display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; padding-top: 4px;">
+        <div class="pi-bar lg" style="width: 480px;">
+          <button class="pi-plus" title="功能菜单">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+          </button>
+          <textarea placeholder="消息…"></textarea>
+          <span class="pi-send">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
+          </span>
+        </div>
+        <div class="pi-bar lg" style="width: 480px;">
+          <button class="pi-plus" title="功能菜单">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5.5" x2="12" y2="18.5"/><line x1="5.5" y1="12" x2="18.5" y2="12"/></svg>
+          </button>
+          <textarea placeholder="消息…">帮我把登录页改成深色模式</textarea>
+          <span class="pi-send ok">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>
+          </span>
+        </div>
+      </div>
+      <p style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
+        * 附件（录音.mp3 等）加入后在输入条内上方显示小号附件行；上下文（📁 loomweb · ⎇ dev）收进 ＋ 菜单顶部「上下文」项
+      </p>
+    </div>
+  </div>
+
+  <p class="doc-foot">
+    本设计图为 UI Mock v2：四窗格统一「消息流 + 底部简化输入条」，功能收进 ＋ btn · 创建 2026-10-21 · 更新 2026-10-21（v2：输入框下置 + 极简化）
+  </p>
+</div>
+</body>
+</html>

@@ -1,0 +1,458 @@
+/* 安全审查面板 */
+
+.security-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* —— ① 扫描/阻断策略紧凑条（一行三格） —— */
+
+.policy-bar {
+  display: flex;
+  align-items: stretch;
+  background: var(--main-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  /* 不设 overflow: hidden——策略问号浮层需溢出策略条展示；圆角由首末格自行裁切背景 */
+}
+
+.policy-cell {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 14px;
+  min-width: 0;
+  background: var(--main-bg);
+}
+
+.policy-cell + .policy-cell {
+  border-left: 1px solid var(--row-divider);
+}
+
+.policy-cell:first-child {
+  border-radius: 10px 0 0 10px;
+}
+
+.policy-cell:last-child {
+  border-radius: 0 10px 10px 0;
+}
+
+/* 名称 + 问号外层（不设 overflow，保证浮层可溢出显示） */
+.policy-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.policy-name {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 问号帮助图标 + hover 说明浮层（策略条三格共用） */
+.policy-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  cursor: help;
+  border-radius: 50%;
+  outline: none;
+}
+
+.policy-help:hover,
+.policy-help:focus-visible {
+  color: var(--text-primary);
+}
+
+.policy-help-tip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 220px;
+  padding: 8px 10px;
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  border-radius: 8px;
+  z-index: 30;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.14);
+}
+
+.policy-help:hover .policy-help-tip,
+.policy-help:focus-visible .policy-help-tip {
+  display: block;
+}
+
+.policy-select {
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--main-bg);
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.policy-select:focus {
+  border-color: #d0d0d4;
+}
+
+/* —— ② 分段切换 —— */
+
+.security-seg {
+  margin-top: 14px;
+}
+
+.security-seg-hint {
+  font-size: 11.5px;
+  color: #9a9a9a;
+  margin: 8px 2px 0;
+}
+
+/* —— 规则行 —— */
+
+.security-rule-row {
+  flex-wrap: wrap;
+}
+
+.rule-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.settings-row-title .status-badge {
+  flex-shrink: 0;
+}
+
+/* 展开箭头（展开时旋转） */
+.rule-chevron {
+  display: inline-flex;
+  color: var(--text-secondary);
+  transition: transform 0.15s;
+}
+
+.rule-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* 规则展开区 */
+.rule-expand {
+  flex-basis: 100%;
+  padding: 4px 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rule-expand-kv {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.rule-expand-k {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 56px;
+}
+
+.rule-expand-v {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.rule-expand-note {
+  font-size: 11.5px;
+  color: #b0b0b0;
+}
+
+/* mono 代码块（规则内容 / 问题代码片段共用） */
+.mono-block {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: #f7f7f8;
+  border: 1px solid var(--row-divider);
+  border-radius: 7px;
+  padding: 7px 10px;
+  color: #474747;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* —— 记录段 —— */
+
+.records-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 2px 0;
+}
+
+/* 定时审查入口（工具行左侧，点击打开设定弹窗） */
+.schedule-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--main-bg);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.schedule-entry:hover {
+  border-color: var(--text-secondary);
+}
+
+.schedule-entry-name {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.schedule-entry-rule {
+  font-size: 12px;
+  color: var(--status-success);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.schedule-entry-off {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.schedule-entry-set {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* 定时审查弹窗 */
+.sched-enable-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sched-enable-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.sched-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sched-time-row .field-select {
+  width: 76px;
+}
+
+.sched-time-colon {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.sched-preview {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  background: #f7f7f8;
+  border: 1px solid var(--row-divider);
+  border-radius: 8px;
+  padding: 9px 12px;
+}
+
+.sched-preview b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.security-record-row {
+  flex-wrap: wrap;
+}
+
+.record-time {
+  white-space: nowrap;
+}
+
+.record-scope {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 记录展开区 */
+.record-expand {
+  flex-basis: 100%;
+  padding: 6px 0 10px;
+}
+
+.record-summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.record-no-findings {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  padding: 14px 0 8px;
+}
+
+/* 问题明细卡片 */
+.finding {
+  border: 1px solid var(--row-divider);
+  border-radius: 9px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #fdfdfd;
+}
+
+.finding:last-child {
+  margin-bottom: 0;
+}
+
+.finding-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.finding-rule {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.finding-loc {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.finding-desc {
+  font-size: 12.5px;
+  color: var(--text-primary);
+  margin-top: 7px;
+  line-height: 1.5;
+}
+
+.finding-sug {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.finding-sug-label {
+  color: var(--text-secondary);
+}
+
+.finding .mono-block {
+  margin-top: 8px;
+}
+
+.finding-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 9px;
+  align-items: center;
+}
+
+/* 黑底小按钮（标记已修复） */
+.btn-mini {
+  border: none;
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-mini:hover {
+  opacity: 0.88;
+}
+
+.finding-handled {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 9px;
+}
+
+/* —— 空状态 —— */
+
+.security-empty-inline {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  padding: 18px 0;
+}
+
+.security-empty-state {
+  text-align: center;
+  padding: 44px 0 40px;
+}
+
+.security-empty-icon {
+  color: #c2c2c6;
+  margin-bottom: 10px;
+}
+
+.security-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.security-empty-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin-top: 5px;
+}
+
+/* —— 底部提示 —— */
+
+.security-foot-hint {
+  font-size: 11.5px;
+  color: #b0b0b0;
+  margin: 10px 4px 0;
+}

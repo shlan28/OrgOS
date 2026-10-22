@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目中心 · 详情页 Workflow Tab — 设计图 v2</title>
+<style>
+  :root {
+    --sidebar-bg: #f5f5f7;
+    --main-bg: #ffffff;
+    --border: #e5e5e5;
+    --row-divider: #f0f0f0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #888888;
+    --text-icon: #5f5f5f;
+    --accent-green: #2e8b47;
+    --status-success: #2e8b47;
+    --status-success-bg: #e8f2ea;
+    --status-info: #3b78c9;
+    --status-info-bg: #e9f0f9;
+    --status-danger: #d64545;
+    --status-danger-bg: #faeaea;
+    --status-warning: #b25e09;
+    --status-warning-bg: #f7efe4;
+    --status-neutral: #9a9a9a;
+    --status-neutral-bg: #f0f0f2;
+    --wf-canvas-bg: #fafbfc;
+    --wf-grid: #eceef1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, #d8dee8 0%, #c3ccd9 50%, #b8c2d2 100%);
+    padding: 40px 24px 64px;
+  }
+  .doc { max-width: 1480px; margin: 0 auto; }
+  .doc-head { text-align: center; margin-bottom: 28px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-head h1 { font-size: 26px; margin-bottom: 8px; }
+  .doc-head p { font-size: 13px; opacity: .85; }
+  .doc-notes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 28px; }
+  .doc-notes span {
+    font-size: 12px; background: rgba(255,255,255,.85); border-radius: 999px;
+    padding: 4px 12px; color: var(--text-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .doc-notes span b { color: var(--accent-green); }
+  .win-cap { display: flex; align-items: baseline; gap: 12px; margin: 40px 0 14px; }
+  .win-cap .tag {
+    font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--accent-green); border-radius: 6px; padding: 3px 9px; flex-shrink: 0;
+  }
+  .win-cap h2 { font-size: 16px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .win-cap .sub { font-size: 12.5px; color: #fff; opacity: .85; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+
+  /* ===== 模拟窗口 ===== */
+  .win {
+    background: var(--main-bg); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.08);
+    display: flex; flex-direction: column; height: 832px;
+  }
+  .titlebar {
+    height: 38px; display: flex; align-items: center; padding: 0 14px;
+    background: #f6f6f8; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .traffic { display: flex; gap: 8px; }
+  .traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .traffic i:nth-child(1) { background: #ec6a5f; }
+  .traffic i:nth-child(2) { background: #f4bf4f; }
+  .traffic i:nth-child(3) { background: #61c554; }
+  .titlebar .tb-title { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .tb-icons { display: flex; gap: 10px; color: var(--text-secondary); font-size: 15px; }
+  .win-body { flex: 1; display: flex; min-height: 0; }
+
+  /* 侧栏（占位简化） */
+  .sidebar { width: 150px; background: var(--sidebar-bg); border-right: 1px solid var(--border); padding: 14px 10px; flex-shrink: 0; }
+  .sb-item { font-size: 12.5px; color: var(--text-secondary); padding: 6px 10px; border-radius: 7px; margin-bottom: 2px; }
+  .sb-item.active { background: #fff; color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+
+  .main { flex: 1; display: flex; min-width: 0; }
+
+  /* 左栏会话区（缩略） */
+  .chat-pane { width: 320px; flex-shrink: 0; border-right: 1px solid var(--border); background: #fcfcfd; display: flex; flex-direction: column; }
+  .chat-head { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .chat-back { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px; display: inline-block; }
+  .chat-name { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+  .chat-name svg { color: var(--text-icon); }
+  .chat-desc { font-size: 11.5px; color: var(--text-secondary); margin-top: 3px; }
+  .chat-stream { flex: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .sysmsg { font-size: 11.5px; color: #b0b0b0; text-align: center; }
+  .bubble-ade { background: #f2f2f4; border-radius: 10px; padding: 7px 11px; font-size: 12.5px; max-width: 86%; align-self: flex-start; }
+  .bubble-mine { background: #e8f2ea; border-radius: 10px; padding: 7px 11px; font-size: 12.5px; max-width: 86%; align-self: flex-end; }
+  .chat-input { border-top: 1px solid var(--border); padding: 12px 14px; display: flex; gap: 8px; align-items: center; }
+  .chat-input .box { flex: 1; border: 1px solid var(--border); border-radius: 12px; padding: 7px 12px; font-size: 13px; color: var(--text-secondary); }
+  .chat-input .send { width: 28px; height: 28px; border-radius: 50%; background: #6b7a5e; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+
+  /* ===== 右栏：可关闭 tab + Workflow 面板 ===== */
+  .right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tabs-row {
+    display: flex; align-items: flex-end; padding: 10px 0 0 16px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0; position: relative;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tabs-row::-webkit-scrollbar { height: 0; }
+  .tab {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; color: var(--text-secondary); padding: 6px 10px;
+    border-radius: 8px 8px 0 0; white-space: nowrap;
+  }
+  .tab.active { color: var(--text-primary); font-weight: 600; background: rgba(0,0,0,.06); display: inline-flex; }
+  .tab.active .x { margin-left: 2px; color: #9a9a9e; font-size: 12px; }
+  .tab .flow-badge { font-size: 10px; color: var(--accent-green); background: var(--status-success-bg); border-radius: 999px; padding: 1px 6px; }
+  .tab-plus { margin-left: auto; margin-right: 16px; margin-bottom: 2.5px; width: 26px; height: 26px; border-radius: 7px; color: var(--text-secondary); font-size: 15px; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* ===== Workflow 面板 ===== */
+  .wf-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* 工具条 */
+  .wf-toolbar {
+    flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border); background: #fff;
+  }
+  .wf-jobs { display: flex; gap: 4px; flex: 1; min-width: 0; overflow: hidden; }
+  .wf-job-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; padding: 4px 10px; border-radius: 8px;
+    border: 1px solid var(--border); color: var(--text-secondary); background: #fff;
+    white-space: nowrap; cursor: pointer;
+  }
+  .wf-job-pill.active {
+    border-color: var(--accent-green); color: var(--accent-green);
+    background: var(--status-success-bg); font-weight: 600;
+  }
+  .wf-job-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: #c9c9cd; flex-shrink: 0; }
+  .wf-job-pill.active .dot { background: var(--status-success); }
+  .wf-job-pill .dot.run { background: var(--status-info); animation: blink 1.2s infinite; }
+  .wf-job-pill .dot.wait { background: var(--status-warning); animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .wf-tool-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; padding: 4px 10px; border-radius: 7px;
+    border: 1px solid var(--border); background: #fff; color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .wf-tool-btn.primary { border-color: var(--accent-green); color: var(--accent-green); background: var(--status-success-bg); font-weight: 600; }
+  .wf-tool-btn:hover { border-color: #c9c9cd; }
+
+  /* 画布 + 右侧属性栏 */
+  .wf-body { flex: 1; min-height: 0; display: flex; }
+
+  .wf-canvas {
+    flex: 1; min-width: 0; position: relative; overflow: hidden;
+    background: var(--wf-canvas-bg);
+    background-image:
+      radial-gradient(circle, var(--wf-grid) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+
+  /* 节点 */
+  .node {
+    position: absolute; width: 132px; background: #fff;
+    border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    cursor: grab; z-index: 2;
+  }
+  .node.selected { border-color: var(--status-info); box-shadow: 0 0 0 3px rgba(59,120,201,.12), 0 2px 8px rgba(0,0,0,.07); }
+  .node-top { display: flex; align-items: center; gap: 8px; padding: 8px 10px 6px; }
+  .node-ico {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #fff;
+  }
+  .node-top .t { min-width: 0; }
+  .node-top .n { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node-top .k { font-size: 10.5px; color: var(--text-secondary); margin-top: 1px; }
+  .node-body { padding: 0 10px 8px; }
+  .node-meta { font-size: 11px; color: var(--text-secondary); line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .node-status {
+    margin: 6px 0 0; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    border-radius: 999px; padding: 2px 8px;
+  }
+  .node-status.s-success { background: var(--status-success-bg); color: var(--status-success); }
+  .node-status.s-running { background: var(--status-info-bg); color: var(--status-info); }
+  .node-status.s-waiting { background: var(--status-warning-bg); color: var(--status-warning); }
+  .node-status.s-pending { background: var(--status-neutral-bg); color: var(--status-neutral); }
+  .node-status.s-skip { background: var(--status-neutral-bg); color: var(--status-neutral); }
+
+  /* 连线锚点 */
+  .node::before, .node::after {
+    content: ''; position: absolute; top: 50%; width: 9px; height: 9px;
+    border-radius: 50%; background: #fff; border: 1.5px solid #c9c9cd; z-index: 3;
+    transform: translateY(-50%);
+  }
+  .node::before { left: -5px; }
+  .node::after { right: -5px; }
+
+  /* SVG 连线层 */
+  .wf-edges { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: visible; }
+  .wf-edges path.edge {
+    fill: none; stroke: #cdd2d8; stroke-width: 1.5;
+    marker-end: url(#arrow);
+  }
+  .wf-edges path.edge.done { stroke: var(--status-success); stroke-dasharray: none; }
+  .wf-edges path.edge.active { stroke: var(--status-info); stroke-width: 2; stroke-dasharray: 5 4; animation: dashmove 1s linear infinite; }
+  .wf-edges path.edge.gate { stroke: var(--status-warning); stroke-width: 1.5; }
+  @keyframes dashmove { to { stroke-dashoffset: -9; } }
+
+  /* 图例 */
+  .wf-legend {
+    position: absolute; left: 12px; bottom: 12px; z-index: 4;
+    background: rgba(255,255,255,.92); border: 1px solid var(--border); border-radius: 9px;
+    padding: 8px 12px; display: flex; flex-direction: column; gap: 5px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .wf-legend .li { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-secondary); }
+  .wf-legend .sw { width: 18px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+  .sw.done { background: var(--status-success); }
+  .sw.active { background: var(--status-info); }
+  .sw.gate { background: var(--status-warning); }
+  .sw.todo { background: #cdd2d8; }
+
+  /* 画布缩放控件 */
+  .wf-zoom {
+    position: absolute; right: 12px; bottom: 12px; z-index: 4;
+    display: flex; flex-direction: column; background: #fff;
+    border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .wf-zoom button {
+    width: 28px; height: 28px; border: none; background: transparent;
+    font-size: 14px; color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wf-zoom button + button { border-top: 1px solid var(--row-divider); }
+  .wf-zoom button:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
+  .wf-zoom .pct { font-size: 10.5px; color: var(--text-secondary); text-align: center; padding: 3px 0; border-top: 1px solid var(--row-divider); }
+
+  /* 右侧属性面板 */
+  .wf-inspector {
+    width: 240px; flex-shrink: 0; border-left: 1px solid var(--border);
+    background: #fff; display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .wf-insp-head { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .wf-insp-head .t { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .wf-insp-head .badge { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 5px; }
+  .badge.b-info { background: var(--status-info-bg); color: var(--status-info); }
+  .badge.b-warn { background: var(--status-warning-bg); color: var(--status-warning); }
+  .badge.b-ok { background: var(--status-success-bg); color: var(--status-success); }
+  .wf-insp-sec { padding: 10px 14px; border-bottom: 1px solid var(--row-divider); }
+  .wf-insp-sec .h { font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 7px; }
+  .kv { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; padding: 3px 0; }
+  .kv .k { color: var(--text-secondary); }
+  .kv .v { color: var(--text-primary); font-weight: 500; }
+  .kv .v.mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 11.5px; }
+  .kv .v.link { color: var(--status-info); text-decoration: underline; cursor: pointer; }
+  .gate-box { background: var(--status-warning-bg); border: 1px solid #ecd9c0; border-radius: 9px; padding: 9px 11px; }
+  .gate-box .t { font-size: 12px; font-weight: 700; color: var(--status-warning); display: flex; align-items: center; gap: 5px; }
+  .gate-box .d { font-size: 11.5px; color: var(--text-secondary); margin: 4px 0 8px; line-height: 1.5; }
+  .gate-box .acts { display: flex; gap: 8px; }
+  .gate-box .acts button { flex: 1; border: none; border-radius: 7px; padding: 5px 0; font-size: 12px; cursor: pointer; font-family: inherit; }
+  .gate-box .acts .no { background: #fff; border: 1px solid var(--border); color: var(--text-secondary); }
+  .gate-box .acts .yes { background: var(--status-warning); color: #fff; font-weight: 600; }
+  .insp-btn {
+    display: block; width: 100%; margin-top: 8px; border: 1px solid var(--border);
+    background: #fff; border-radius: 8px; padding: 6px 0; font-size: 12px;
+    color: var(--text-primary); cursor: pointer; font-family: inherit;
+  }
+  .insp-btn:hover { border-color: #c9c9cd; background: #fafafa; }
+  .msg-mini { font-size: 11.5px; color: var(--text-secondary); line-height: 1.6; padding: 3px 0; }
+  .msg-mini b { color: var(--text-primary); font-weight: 600; }
+
+  /* 底部运行状态条 */
+  .wf-runbar {
+    flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; border-top: 1px solid var(--border); background: #fff;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .wf-runbar .run-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+  .wf-runbar .run-state .dot { width: 8px; height: 8px; border-radius: 50%; animation: blink 1.2s infinite; }
+  .wf-runbar .sep { color: var(--border); }
+  .wf-runbar .progress { flex: 1; height: 4px; border-radius: 2px; background: var(--row-divider); overflow: hidden; }
+  .wf-runbar .progress i { display: block; height: 100%; width: 50%; background: var(--status-info); border-radius: 2px; }
+  .wf-runbar .open-modal { color: var(--status-info); cursor: pointer; text-decoration: underline; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <h1>项目中心 · 详情页 Workflow Tab — 设计图 v2</h1>
+    <p>新增第 10 个 tab「工作流」：React Flow 风格节点画布 + 右侧节点属性面板（Mock 数据 = loomweb 现有 4 个自动化任务）</p>
+  </div>
+  <div class="doc-notes">
+    <span><b>状态 A</b> 周报生成（等待确认 · 2/3 · Gate 高亮 + 属性面板显示批准/拒绝）</span>
+    <span><b>状态 B</b> 每日构建（运行中 · 2/4 · 活动连线流动动画）</span>
+    <span><b>状态 C</b> 无 currentRun（MR 静态检查 · 显示最近一次运行结果）</span>
+    <span>节点 = 任务的 step；徽标 = 运行状态；连线着色 = 执行进度</span>
+  </div>
+
+  <!-- ============ 状态 A：周报生成（等待确认） ============ -->
+  <div class="win-cap">
+    <span class="tag">状态 A</span>
+    <h2>工作流 tab · 选中「周报生成」任务（Gate 等待确认）</h2>
+    <span class="sub">任务 pill 高亮 → 画布节点状态/连线着色 → 右侧属性面板含 Gate 操作</span>
+  </div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <span class="tb-title">Loom</span>
+      <div class="tb-icons">🔔 2</div>
+    </div>
+    <div class="win-body">
+      <div class="sidebar">
+        <div class="sb-item">💬 会话</div>
+        <div class="sb-item active">🗂 项目中心</div>
+        <div class="sb-item">⚙️ 定制</div>
+      </div>
+      <div class="main">
+        <!-- 左栏会话区（缩略） -->
+        <div class="chat-pane">
+          <div class="chat-head">
+            <span class="chat-back">← 返回</span>
+            <div class="chat-name">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              loomweb
+            </div>
+            <div class="chat-desc">Loom Web 端研发 · 周期 2026-07-02 ~ 09-30</div>
+          </div>
+          <div class="chat-stream">
+            <div class="sysmsg">运行开始：周报生成 · 14:55:01</div>
+            <div class="bubble-ade">汇总数据完成。MR 12 · Issue 8 · 提交 47</div>
+            <div class="bubble-ade">周报草稿生成完成，等待人工确认…</div>
+            <div class="bubble-mine">数据口径确认没问题</div>
+          </div>
+          <div class="chat-input">
+            <div class="box">发送消息…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+
+        <!-- 右栏 -->
+        <div class="right">
+          <div class="tabs-row">
+            <span class="tab">📄 项目规范</span>
+            <span class="tab">💻 代码</span>
+            <span class="tab">🤖 项目ADE</span>
+            <span class="tab">📚 知识记忆</span>
+            <span class="tab">⚙️ 自动化任务 <span class="x">×</span></span>
+            <span class="tab active">🔀 工作流 <span class="x">×</span></span>
+            <span class="tab">📊 自动化统计</span>
+            <span class="tab">✅ 代码审查</span>
+            <span class="tab">🛡 安全审查</span>
+            <span class="tab">🧪 测试</span>
+            <span class="tab-plus">＋</span>
+          </div>
+
+          <!-- ===== Workflow 面板 ===== -->
+          <div class="wf-panel">
+            <!-- 工具条：任务 pill 切换 + 操作按钮 -->
+            <div class="wf-toolbar">
+              <div class="wf-jobs">
+                <span class="wf-job-pill"><span class="dot run"></span>每日构建</span>
+                <span class="wf-job-pill"><span class="dot"></span>MR 静态检查</span>
+                <span class="wf-job-pill active"><span class="dot wait"></span>周报生成</span>
+                <span class="wf-job-pill"><span class="dot"></span>发布准备</span>
+              </div>
+              <button class="wf-tool-btn">▶ 运行</button>
+              <button class="wf-tool-btn primary">✎ 去 ADE Teams 编辑</button>
+            </div>
+
+            <!-- 画布 + 属性面板 -->
+            <div class="wf-body">
+              <div class="wf-canvas">
+                <!-- 连线层（SVG 贝塞尔，React Flow 手绘观感） -->
+                <svg class="wf-edges" width="100%" height="100%">
+                  <defs>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#cdd2d8" />
+                    </marker>
+                  </defs>
+                  <!-- 汇总数据 → 生成周报（已完成，绿） -->
+                  <path class="edge done" d="M 152 170 C 172 170, 150 170, 170 170" />
+                  <!-- 生成周报 → 发布到外部渠道（Gate，橙 + 待定） -->
+                  <path class="edge gate" d="M 302 170 C 322 170, 300 170, 320 170" />
+                  <path class="edge gate" d="M 452 170 C 472 170, 470 170, 490 170" />
+                </svg>
+
+                <!-- 节点：trigger -->
+                <div class="node" style="left:20px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#3b78c9;">⏰</span>
+                    <span class="t">
+                      <span class="n">定时触发</span>
+                      <span class="k">Trigger</span>
+                    </span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">每周五 18:00</div>
+                  </div>
+                </div>
+
+                <!-- 节点：汇总数据（成功） -->
+                <div class="node" style="left:170px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#5f5f5f;">📊</span>
+                    <span class="t">
+                      <span class="n">汇总数据</span>
+                      <span class="k">数据汇总</span>
+                    </span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">耗时 11 秒 · 14:55:12</div>
+                    <span class="node-status s-success">✓ 成功</span>
+                  </div>
+                </div>
+
+                <!-- 节点：生成周报（成功） -->
+                <div class="node" style="left:320px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#8a6fbf;">📝</span>
+                    <span class="t">
+                      <span class="n">生成周报</span>
+                      <span class="k">文档生成</span>
+                    </span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">耗时 2 分 28 秒 · 14:57:40</div>
+                    <span class="node-status s-success">✓ 成功</span>
+                  </div>
+                </div>
+
+                <!-- 节点：发布到外部渠道（Gate 等待） -->
+                <div class="node selected" style="left:490px; top:112px; width:150px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#b25e09;">🚀</span>
+                    <span class="t">
+                      <span class="n">发布到外部渠道</span>
+                      <span class="k">外部发布</span>
+                    </span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">shilu 确认 · 已等待 5 分钟</div>
+                    <span class="node-status s-waiting">⚠ 等待确认</span>
+                  </div>
+                </div>
+
+                <!-- 图例 -->
+                <div class="wf-legend">
+                  <span class="li"><span class="sw done"></span>已完成连线</span>
+                  <span class="li"><span class="sw active"></span>执行中（流动）</span>
+                  <span class="li"><span class="sw gate"></span>等待人工</span>
+                  <span class="li"><span class="sw todo"></span>未执行</span>
+                </div>
+
+                <!-- 缩放控件 -->
+                <div class="wf-zoom">
+                  <button>＋</button>
+                  <button>－</button>
+                  <div class="pct">75%</div>
+                  <button title="适配">⤢</button>
+                </div>
+              </div>
+
+              <!-- 右侧：节点属性面板 -->
+              <div class="wf-inspector">
+                <div class="wf-insp-head">
+                  <span class="t">
+                    🚀 发布到外部渠道
+                    <span class="badge b-warn">等待确认</span>
+                  </span>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">节点信息</div>
+                  <div class="kv"><span class="k">类型</span><span class="v">外部发布</span></div>
+                  <div class="kv"><span class="k">所属步骤</span><span class="v mono">st3 / 3</span></div>
+                  <div class="kv"><span class="k">耗时</span><span class="v">—</span></div>
+                  <div class="kv"><span class="k">会话</span><span class="v link">跳转 ↗</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">Gate · 需要人工处理</div>
+                  <div class="gate-box">
+                    <div class="t">⚠ 发布前确认</div>
+                    <div class="d">即将把周报发布到外部渠道，请确认内容无误。</div>
+                    <div class="acts">
+                      <button class="no">拒绝</button>
+                      <button class="yes">批准</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">本步骤会话摘要</div>
+                  <div class="msg-mini"><b>ADE</b> 周报草稿生成完成，等待人工确认。</div>
+                  <div class="msg-mini"><b>shilu</b>（若在左栏插话，也会显示在这里）</div>
+                  <button class="insp-btn">在左栏打开本步骤会话</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 底部运行状态条 -->
+            <div class="wf-runbar">
+              <span class="run-state"><span class="dot" style="background:var(--status-warning);"></span>等待确认</span>
+              <span class="sep">|</span>
+              <span>运行 #r12 · 开始于 08-28 14:55</span>
+              <span class="sep">|</span>
+              <span>步骤 2/3 · 已等待 5 分钟</span>
+              <span class="progress"><i style="width:66%; background:var(--status-warning);"></i></span>
+              <span class="open-modal">查看运行详情（RunModal）↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 状态 B：每日构建（运行中） ============ -->
+  <div class="win-cap">
+    <span class="tag">状态 B</span>
+    <h2>切换到「每日构建」任务（运行中 · 连线流动动画）</h2>
+    <span class="sub">运行中节点蓝框呼吸 + 活动连线虚线流动；属性面板展示进行中步骤</span>
+  </div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <span class="tb-title">Loom</span>
+      <div class="tb-icons">🔔 2</div>
+    </div>
+    <div class="win-body">
+      <div class="sidebar">
+        <div class="sb-item">💬 会话</div>
+        <div class="sb-item active">🗂 项目中心</div>
+        <div class="sb-item">⚙️ 定制</div>
+      </div>
+      <div class="main">
+        <div class="chat-pane">
+          <div class="chat-head">
+            <span class="chat-back">← 返回</span>
+            <div class="chat-name">loomweb</div>
+            <div class="chat-desc">每日构建 · 单元测试 · 运行中 2/4</div>
+          </div>
+          <div class="chat-stream">
+            <div class="sysmsg">运行开始：每日构建 · 08:00:01</div>
+            <div class="bubble-ade">拉取代码完成（2 文件变更）。</div>
+            <div class="bubble-mine">顺便把 login 分支的用例也跑一下</div>
+            <div class="bubble-ade">收到，已将 login 分支用例加入本次测试范围。</div>
+          </div>
+          <div class="chat-input">
+            <div class="box">给运行中的任务发消息…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="tabs-row">
+            <span class="tab">📄 项目规范</span>
+            <span class="tab">💻 代码</span>
+            <span class="tab">🤖 项目ADE</span>
+            <span class="tab">📚 知识记忆</span>
+            <span class="tab">⚙️ 自动化任务</span>
+            <span class="tab active">🔀 工作流 <span class="x">×</span></span>
+            <span class="tab">📊 自动化统计</span>
+            <span class="tab">✅ 代码审查</span>
+            <span class="tab">🛡 安全审查</span>
+            <span class="tab">🧪 测试</span>
+            <span class="tab-plus">＋</span>
+          </div>
+
+          <div class="wf-panel">
+            <div class="wf-toolbar">
+              <div class="wf-jobs">
+                <span class="wf-job-pill active"><span class="dot run"></span>每日构建</span>
+                <span class="wf-job-pill"><span class="dot"></span>MR 静态检查</span>
+                <span class="wf-job-pill"><span class="dot wait"></span>周报生成</span>
+                <span class="wf-job-pill"><span class="dot"></span>发布准备</span>
+              </div>
+              <button class="wf-tool-btn">⏸ 暂停</button>
+              <button class="wf-tool-btn primary">✎ 去 ADE Teams 编辑</button>
+            </div>
+
+            <div class="wf-body">
+              <div class="wf-canvas">
+                <svg class="wf-edges" width="100%" height="100%">
+                  <defs>
+                    <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#cdd2d8" />
+                    </marker>
+                  </defs>
+                  <!-- trigger → 拉取代码 -->
+                  <path class="edge done" d="M 152 170 C 172 170, 150 170, 170 170" />
+                  <!-- 拉取代码 → 安装依赖（完成，绿） -->
+                  <path class="edge done" d="M 302 170 C 322 170, 300 170, 320 170" />
+                  <!-- 安装依赖 → 单元测试（执行中，蓝流动） -->
+                  <path class="edge active" d="M 452 170 C 472 170, 450 170, 470 170" />
+                  <!-- 单元测试 → 构建产物（未执行，灰） -->
+                  <path class="edge" d="M 602 170 C 622 170, 600 170, 620 170" />
+                </svg>
+
+                <div class="node" style="left:20px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#3b78c9;">⏰</span>
+                    <span class="t"><span class="n">定时触发</span><span class="k">Trigger</span></span>
+                  </div>
+                  <div class="node-body"><div class="node-meta">每天 08:00</div></div>
+                </div>
+
+                <div class="node" style="left:170px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#5f5f5f;">📥</span>
+                    <span class="t"><span class="n">拉取代码</span><span class="k">代码同步</span></span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">耗时 1 秒 · 08:00:02</div>
+                    <span class="node-status s-success">✓ 成功</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:320px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#8a6fbf;">📦</span>
+                    <span class="t"><span class="n">安装依赖</span><span class="k">依赖管理</span></span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">耗时 39 秒 · 08:00:41</div>
+                    <span class="node-status s-success">✓ 成功</span>
+                  </div>
+                </div>
+
+                <div class="node selected" style="left:470px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#2e8b47;">🧪</span>
+                    <span class="t"><span class="n">单元测试</span><span class="k">测试执行</span></span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">42/58 通过 · +login 分支用例</div>
+                    <span class="node-status s-running">● 运行中</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:620px; top:112px; opacity:.72;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#9a9a9a;">🏗</span>
+                    <span class="t"><span class="n">构建产物</span><span class="k">产物构建</span></span>
+                  </div>
+                  <div class="node-body">
+                    <span class="node-status s-pending">○ 等待</span>
+                  </div>
+                </div>
+
+                <div class="wf-legend">
+                  <span class="li"><span class="sw done"></span>已完成连线</span>
+                  <span class="li"><span class="sw active"></span>执行中（流动）</span>
+                  <span class="li"><span class="sw todo"></span>未执行</span>
+                </div>
+
+                <div class="wf-zoom">
+                  <button>＋</button>
+                  <button>－</button>
+                  <div class="pct">62%</div>
+                  <button title="适配">⤢</button>
+                </div>
+              </div>
+
+              <div class="wf-inspector">
+                <div class="wf-insp-head">
+                  <span class="t">🧪 单元测试 <span class="badge b-info">运行中</span></span>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">节点信息</div>
+                  <div class="kv"><span class="k">类型</span><span class="v">测试执行</span></div>
+                  <div class="kv"><span class="k">所属步骤</span><span class="v mono">st3 / 4</span></div>
+                  <div class="kv"><span class="k">进度</span><span class="v">42/58 通过</span></div>
+                  <div class="kv"><span class="k">会话</span><span class="v link">跳转 ↗</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">产物（已产生）</div>
+                  <div class="kv"><span class="k v mono">—</span><span class="v link">test-report.html</span></div>
+                  <div class="kv"><span class="k"></span><span class="v link">coverage/lcov.info</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">本步骤会话摘要</div>
+                  <div class="msg-mini"><b>ADE</b> 单元测试进行中… 42/58 通过</div>
+                  <div class="msg-mini"><b>wang</b> 顺便把 login 分支的用例也跑一下</div>
+                  <button class="insp-btn">在左栏打开本步骤会话</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="wf-runbar">
+              <span class="run-state"><span class="dot" style="background:var(--status-info);"></span>运行中</span>
+              <span class="sep">|</span>
+              <span>运行 #r11 · 开始于 08-28 08:00</span>
+              <span class="sep">|</span>
+              <span>步骤 3/4 · 执行中：单元测试</span>
+              <span class="progress"><i style="width:50%;"></i></span>
+              <span class="open-modal">查看运行详情（RunModal）↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 状态 C：无 currentRun（MR 静态检查） ============ -->
+  <div class="win-cap">
+    <span class="tag">状态 C</span>
+    <h2>无活动运行的任务（MR 静态检查 · 展示最近一次结果）</h2>
+    <span class="sub">「▶ 运行」主操作；节点状态来自 history 最新一条；无 Gate/进度条置灰</span>
+  </div>
+  <div class="win">
+    <div class="titlebar">
+      <div class="traffic"><i></i><i></i><i></i></div>
+      <span class="tb-title">Loom</span>
+      <div class="tb-icons">🔔 2</div>
+    </div>
+    <div class="win-body">
+      <div class="sidebar">
+        <div class="sb-item">💬 会话</div>
+        <div class="sb-item active">🗂 项目中心</div>
+        <div class="sb-item">⚙️ 定制</div>
+      </div>
+      <div class="main">
+        <div class="chat-pane">
+          <div class="chat-head">
+            <span class="chat-back">← 返回</span>
+            <div class="chat-name">loomweb</div>
+            <div class="chat-desc">暂无会话</div>
+          </div>
+          <div class="chat-stream"></div>
+          <div class="chat-input">
+            <div class="box">发送消息…</div>
+            <div class="send">➤</div>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="tabs-row">
+            <span class="tab">📄 项目规范</span>
+            <span class="tab">💻 代码</span>
+            <span class="tab">🤖 项目ADE</span>
+            <span class="tab">📚 知识记忆</span>
+            <span class="tab">⚙️ 自动化任务</span>
+            <span class="tab active">🔀 工作流 <span class="x">×</span></span>
+            <span class="tab">📊 自动化统计</span>
+            <span class="tab">✅ 代码审查</span>
+            <span class="tab">🛡 安全审查</span>
+            <span class="tab">🧪 测试</span>
+            <span class="tab-plus">＋</span>
+          </div>
+
+          <div class="wf-panel">
+            <div class="wf-toolbar">
+              <div class="wf-jobs">
+                <span class="wf-job-pill"><span class="dot run"></span>每日构建</span>
+                <span class="wf-job-pill active"><span class="dot"></span>MR 静态检查</span>
+                <span class="wf-job-pill"><span class="dot wait"></span>周报生成</span>
+                <span class="wf-job-pill"><span class="dot"></span>发布准备</span>
+              </div>
+              <button class="wf-tool-btn">▶ 运行</button>
+              <button class="wf-tool-btn primary">✎ 去 ADE Teams 编辑</button>
+            </div>
+
+            <div class="wf-body">
+              <div class="wf-canvas">
+                <svg class="wf-edges" width="100%" height="100%">
+                  <defs>
+                    <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#cdd2d8" />
+                    </marker>
+                  </defs>
+                  <path class="edge done" d="M 192 170 C 212 170, 200 170, 220 170" />
+                  <path class="edge done" d="M 352 170 C 372 170, 360 170, 380 170" />
+                  <path class="edge done" d="M 512 170 C 532 170, 520 170, 540 170" />
+                </svg>
+
+                <div class="node" style="left:60px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#3b78c9;">⚡</span>
+                    <span class="t"><span class="n">事件触发</span><span class="k">Trigger</span></span>
+                  </div>
+                  <div class="node-body"><div class="node-meta">MR 创建时</div></div>
+                </div>
+
+                <div class="node" style="left:220px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#5f5f5f;">📥</span>
+                    <span class="t"><span class="n">拉取代码</span><span class="k">代码同步</span></span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">耗时 1 秒 · 13:40:02</div>
+                    <span class="node-status s-success">✓ 成功</span>
+                  </div>
+                </div>
+
+                <div class="node selected" style="left:380px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#4a90a4;">🔍</span>
+                    <span class="t"><span class="n">静态检查</span><span class="k">质量检查</span></span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">耗时 1 分 28 秒 · 13:41:30</div>
+                    <span class="node-status s-success">✓ 成功</span>
+                  </div>
+                </div>
+
+                <div class="node" style="left:540px; top:112px;">
+                  <div class="node-top">
+                    <span class="node-ico" style="background:#2e8b47;">📄</span>
+                    <span class="t"><span class="n">输出报告</span><span class="k">报告输出</span></span>
+                  </div>
+                  <div class="node-body">
+                    <div class="node-meta">耗时 40 秒 · 13:42:10</div>
+                    <span class="node-status s-success">✓ 成功</span>
+                  </div>
+                </div>
+
+                <div class="wf-legend">
+                  <span class="li"><span class="sw done"></span>最近一次运行连线</span>
+                  <span class="li"><span class="sw todo"></span>未执行</span>
+                </div>
+
+                <div class="wf-zoom">
+                  <button>＋</button>
+                  <button>－</button>
+                  <div class="pct">75%</div>
+                  <button title="适配">⤢</button>
+                </div>
+              </div>
+
+              <div class="wf-inspector">
+                <div class="wf-insp-head">
+                  <span class="t">🔍 静态检查 <span class="badge b-ok">最近运行成功</span></span>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">最近一次运行</div>
+                  <div class="kv"><span class="k">运行编号</span><span class="v mono">#r8</span></div>
+                  <div class="kv"><span class="k">时间</span><span class="v">08-26 13:40 ~ 13:42</span></div>
+                  <div class="kv"><span class="k">结果</span><span class="v">✓ 成功 · 耗时 2 分 09 秒</span></div>
+                </div>
+                <div class="wf-insp-sec">
+                  <div class="h">节点信息</div>
+                  <div class="kv"><span class="k">类型</span><span class="v">质量检查</span></div>
+                  <div class="kv"><span class="k">所属步骤</span><span class="v mono">st2 / 3</span></div>
+                  <div class="kv"><span class="k">会话</span><span class="v link">跳转 ↗</span></div>
+                </div>
+                <button class="insp-btn" style="margin:10px 14px; width:calc(100% - 28px);">▶ 立即运行一次</button>
+              </div>
+            </div>
+
+            <div class="wf-runbar">
+              <span class="run-state" style="color:var(--text-secondary);"><span class="dot" style="background:#c9c9cd; animation:none;"></span>空闲</span>
+              <span class="sep">|</span>
+              <span>最近运行 #r8 · 08-26 13:42 成功</span>
+              <span class="sep">|</span>
+              <span>触发：MR 创建时</span>
+              <span class="progress"><i style="width:0%;"></i></span>
+              <span class="open-modal">查看运行详情（RunModal）↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

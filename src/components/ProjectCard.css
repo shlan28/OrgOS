@@ -1,0 +1,186 @@
+.project-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  width: 100%;
+  background: var(--main-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+/* 卡片外层包裹：承载 ⋯ 菜单定位 */
+.project-card-wrap {
+  position: relative;
+}
+
+.project-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.project-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.project-card-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.project-card-name svg {
+  color: var(--text-icon);
+}
+
+.project-card-desc {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 8px 0 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 周期行：日期区间 + 临期/逾期/未启动徽标 */
+.project-card-period {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.project-card-period-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.project-card-period-range svg {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+.project-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.project-card-avatars {
+  display: inline-flex;
+}
+
+.project-card-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e3e8f0;
+  color: #5b7ba6;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--main-bg);
+}
+
+.project-card-avatar + .project-card-avatar {
+  margin-left: -6px;
+}
+
+.project-card-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ⋯ 菜单按钮：hover 时浮现 */
+.project-card-menu-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  z-index: 5;
+}
+
+.project-card-wrap:hover .project-card-menu-btn,
+.project-card-menu-btn:focus-visible {
+  opacity: 1;
+}
+
+.project-card-menu-btn:hover {
+  color: var(--text-primary);
+  background: #fff;
+}
+
+/* 移动到文件夹菜单 */
+.project-card-menu {
+  position: absolute;
+  top: 38px;
+  right: 10px;
+  min-width: 148px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 30;
+}
+
+.project-card-menu-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 5px 10px 3px;
+}
+
+.project-card-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.project-card-menu-item:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* 当前所属项：禁用 + 浅色（表示已在其中） */
+.project-card-menu-item:disabled {
+  color: var(--status-neutral);
+  cursor: default;
+}

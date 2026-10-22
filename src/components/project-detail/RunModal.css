@@ -1,0 +1,219 @@
+/* 遮罩（复用 FormModal 的遮罩语言） */
+.run-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: run-modal-fade 0.15s ease-out;
+}
+
+/* 弹窗容器 */
+.run-modal {
+  width: 680px;
+  max-width: calc(100vw - 48px);
+  height: min(640px, 80vh);
+  background: var(--main-bg);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: run-modal-pop 0.15s ease-out;
+}
+
+/* ===== 头部 ===== */
+.run-modal-head {
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.run-modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.run-modal-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.run-modal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.run-modal-badge.running .status-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-info);
+  margin-right: 5px;
+  animation: run-pulse 1.6s ease-in-out infinite;
+}
+
+.run-modal-progress {
+  font-size: 11.5px;
+  color: var(--status-info);
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+}
+
+.run-modal-head-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.run-modal-close {
+  border: none;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.run-modal-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+.run-modal-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 5px;
+}
+
+/* 细步骤进度条 */
+.run-modal-steps {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.run-step-seg {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.run-step-seg-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--row-divider);
+}
+
+.run-step-seg.status-成功 .run-step-seg-bar {
+  background: var(--status-success);
+}
+
+.run-step-seg.status-运行中 .run-step-seg-bar {
+  background: var(--status-info);
+  animation: run-pulse 1.6s ease-in-out infinite;
+}
+
+.run-step-seg.status-失败 .run-step-seg-bar {
+  background: var(--status-danger);
+}
+
+.run-step-seg.status-跳过 .run-step-seg-bar {
+  background: var(--status-neutral);
+}
+
+.run-step-seg-name {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.run-step-seg.status-运行中 .run-step-seg-name {
+  color: var(--status-info);
+  font-weight: 600;
+}
+
+.run-step-seg.status-成功 .run-step-seg-name {
+  color: var(--status-success);
+}
+
+/* ===== 消息流 ===== */
+.run-modal-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.run-modal-empty {
+  margin: auto;
+  font-size: 12.5px;
+  color: #b0b0b0;
+}
+
+/* 消息渲染样式（.run-msg-*）已迁移至 ChatMessage.css（与详情页会话区共享） */
+
+/* ===== 输入框 ===== */
+.run-modal-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.run-modal-input .field-input {
+  flex: 1;
+}
+
+/* 「去 ADE Teams 编辑」按钮（头部，本期占位不跳转） */
+.run-modal-teams-edit {
+  font-size: 12px;
+}
+
+/* ===== 动画 ===== */
+@keyframes run-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes run-modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes run-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

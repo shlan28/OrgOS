@@ -1,0 +1,37 @@
+/* 横向条形（div 实现，非 SVG） */
+
+.hbar {
+  width: 100%;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.hbar.with-track {
+  background: #f0f0f2;
+}
+
+.hbar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.35s ease;
+}
+
+.hbar-fill.tone-success {
+  background: var(--status-success);
+}
+
+.hbar-fill.tone-info {
+  background: var(--status-info);
+}
+
+.hbar-fill.tone-neutral {
+  background: var(--status-neutral);
+}
+
+.hbar-fill.tone-warning {
+  background: var(--status-warning);
+}
+
+.hbar-fill.tone-danger {
+  background: var(--status-danger);
+}

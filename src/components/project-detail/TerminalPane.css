@@ -1,0 +1,147 @@
+/* ===== 格 3：ADE 工具日志（浅色 mono 日志风，与其他格子同白底） ===== */
+
+.terminal-pane {
+  flex: 1; /* 撑满 detail-cell 高度 */
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 头部：标题 + 当前会话名 + 清空（40px 与四格头部对齐） */
+.term-head {
+  height: 40px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+}
+
+.term-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.term-sess {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+.term-clear-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+
+.term-clear-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-primary);
+}
+
+.term-clear-btn.confirm {
+  color: var(--status-danger);
+}
+
+/* 运行中呼吸点（日志实时增长提示） */
+.term-running-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--status-success);
+  flex-shrink: 0;
+  animation: term-dot-blink 1.6s ease-in-out infinite;
+}
+
+@keyframes term-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* 日志区：白底 mono（与格子语言一致） */
+.term-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #fff;
+  font-family: 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.9;
+  color: #4a4e55;
+  padding: 10px 12px;
+}
+
+/* 日志行：时间戳小列 +（cmd 行 ❯ 提示符）+ 正文（占满剩余宽，长文本截断省略） */
+.tl {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+  min-width: 0;
+  align-items: baseline;
+  margin-bottom: 3px; /* 行间额外间距，防视觉重叠 */
+}
+
+.tl .ts {
+  color: #c2c5ca;
+  flex-shrink: 0;
+  width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl .sym {
+  color: #3a8fae;
+  flex-shrink: 0;
+}
+
+.tl .body {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* kind 着色（浅底配色） */
+.tl.cmd .body { color: #2d6d88; }
+.tl.out .body { color: #8a8d93; }
+.tl.ok .body { color: #4a8a4a; }
+.tl.err .body { color: #c05252; }
+.tl.info .body { color: #5b7ba6; }
+
+/* 空态：闪烁光标 */
+.term-empty .body {
+  color: #b0b3b8;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.term-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: #3a8fae;
+  animation: term-cursor-blink 1.1s step-end infinite;
+}
+
+@keyframes term-cursor-blink {
+  50% { opacity: 0; }
+}

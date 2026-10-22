@@ -1,0 +1,330 @@
+.specs-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* 搜索框 */
+.specs-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--main-bg);
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.specs-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: transparent;
+}
+
+.specs-search input::placeholder {
+  color: #b0b0b0;
+}
+
+/* 顶部常驻 tips：说明规范会进入系统提示词 */
+.specs-tips {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: var(--status-info-bg);
+  border-radius: 8px;
+}
+
+.specs-tips-icon {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-style: italic;
+  font-weight: 700;
+  color: #fff;
+  background: var(--status-info);
+  margin-top: 1.5px;
+}
+
+.specs-tips-text {
+  font-size: 12px;
+  color: #4a4a4a;
+  line-height: 1.55;
+}
+
+.specs-empty {
+  padding: 18px 16px;
+  font-size: 12px;
+  color: #b0b0b0;
+}
+
+.specs-doc-icon {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+.specs-doc-row .settings-row-right {
+  color: #c2c2c6;
+}
+
+/* —— 是否加入项目提示词：行右侧纯开关（无行内文案，点击开关弹常驻提示） —— */
+.specs-prompt-toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+/* 点击开关后的常驻提示（fixed 右上，不自动消失，仅 X 关闭） */
+.specs-toast {
+  position: fixed;
+  top: 56px;
+  right: 24px;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 280px;
+  max-width: 380px;
+  padding: 12px 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.specs-toast-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  margin-top: 1px;
+}
+
+.specs-toast-icon.on { background: var(--accent-green); }
+.specs-toast-icon.off { background: #b0b0b0; }
+
+.specs-toast-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.specs-toast-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.specs-toast-body {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+  margin-top: 2px;
+}
+
+.specs-toast-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: 4px;
+}
+
+.specs-toast-close:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* 新建弹窗内开关字段行：开关 + 说明横向排列 */
+.specs-prompt-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 弹窗内小字说明（保留：弹窗是表单语境） */
+.specs-prompt-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* 预览页工具栏右侧徽标 */
+.specs-toolbar-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.specs-prompt-badge {
+  font-size: 11.5px;
+  border-radius: 5px;
+  padding: 3px 8px;
+  background: var(--badge-bg);
+  color: var(--text-secondary);
+}
+
+.specs-prompt-badge.on {
+  color: var(--accent-green);
+}
+
+/* 顶部工具栏 */
+.specs-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.specs-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.specs-back:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+.specs-mode-tag {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--badge-bg);
+  border-radius: 5px;
+  padding: 3px 8px;
+}
+
+.specs-btn-text {
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.specs-btn-text:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+/* 预览 */
+.specs-preview {
+  background: var(--main-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px 24px;
+}
+
+.specs-preview-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+}
+
+.specs-preview-heading {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 14px 0 6px;
+}
+
+.specs-preview-body {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #3a3a3a;
+}
+
+/* 编辑 */
+.specs-editing {
+  flex: 1;
+}
+
+.specs-editor {
+  flex: 1;
+  min-height: 320px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  resize: none;
+  outline: none;
+}
+
+.specs-editor:focus {
+  border-color: #d0d0d4;
+}
+
+.specs-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.specs-dirty-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.specs-edit-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.specs-btn-primary {
+  border: none;
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.specs-btn-primary:disabled {
+  background: #d8d8dc;
+  color: #fff;
+  cursor: not-allowed;
+}

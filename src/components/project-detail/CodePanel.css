@@ -1,0 +1,60 @@
+.code-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 当前段说明文案：随分段切换表达「可写 / 仅上下文」语义 */
+.code-seg-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 2px 4px;
+}
+
+.code-repo-icon {
+  color: var(--text-icon);
+  flex-shrink: 0;
+}
+
+/* 仓库类型徽标：GitLab 橙 / SVN 蓝 */
+.code-type-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.code-type-badge.gitlab {
+  background: #fdf0e7;
+  color: #c4511f;
+}
+
+.code-type-badge.svn {
+  background: #e9f0f9;
+  color: #3b78c9;
+}
+
+/* 分支行：图标 + 分支名 */
+.code-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  color: var(--text-secondary);
+}
+
+.code-synced {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.code-empty {
+  padding: 18px 16px;
+  font-size: 12px;
+  color: #b0b0b0;
+}
