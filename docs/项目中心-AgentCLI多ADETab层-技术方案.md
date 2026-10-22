@@ -1,7 +1,7 @@
 # 项目中心 · Agent CLI 多 ADE Tab 层 —— 技术方案
 
 > 创建日期：2026-10-22
-> 更新日期：2026-10-22
+> 更新日期：2026-10-22（实施完成：附验证结果；见第 8 节）
 
 ## 1. 需求
 
@@ -119,3 +119,22 @@ tab 层（30px）加在 40px 头部**之下**：头部 40px 底线仍与其他�
 ## 7. 历史更新说明
 
 - 2026-10-22 初版：多 ADE tab 层方案（TerminalLog.agentId + runLogsOf 分桶 + activeAgentId 上提 + 30px tab 条）
+- 2026-10-22 实施完成：新增 `logAgentIdOf` 兜底函数（log.agentId 缺省归主 agent）；
+  `runLogsOf` sys 横幅带 agent 身份（name · model · role）；切会话保留 agent 选中态；
+  「选中 agent 被移除」时兜底回主 agent（useEffect 监听 project.agents）
+
+## 8. 验证结果（已通过）
+
+Playwright 14 步验证（13 PASS + 1 项 mock 数据缺失）：
+
+| 验证组 | 结果 |
+|---|---|
+| A tab 层渲染 | ✅ 30px 高 / 2 tab / a1 busy 绿呼吸点 / 默认选中主 agent |
+| B auto 会话切 tab | ✅ a1 桶 = GLM banner + 拉取/安装/构建；a2 桶 = qwen banner + npm test PASS + wang 插话（归属当前执行步骤 agent） |
+| C manual sess4 双桶 | ✅ a1 = fs/gateway/minutes；a2 = kb search + regression.spec.ts + 灰度回归就绪；跨会话保留 tab 选中 |
+| D sess5 空态 | ✅ a2 tab 显示「等待 agent 启动…」+ 闪烁光标 |
+| E 插话归属 | ✅ sess4 选 a2 插话 → prompt + 1.5s think 回应只入 a2 桶（a1 无）；清空只清 a2 桶（a1 15 行轨迹保留） |
+| F 单 agent 项目 | ✅ 翼构移动应用不渲染 tab 层、40px 头正常（banner 缺失为该项目 mock 无会话数据，非 tab 层缺陷） |
+
+亲自读图验收 4 张截图（agenttab-auto-a1 / agenttab-auto-a2 / agenttab-manual-a2 / agenttab-single）：
+tab 层视觉（状态点 + 选中底条 + 名字）、双桶轨迹内容、空态、单 agent 布局全部符合设计。
