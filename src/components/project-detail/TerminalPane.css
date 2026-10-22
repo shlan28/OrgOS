@@ -68,14 +68,16 @@
   padding: 10px 10px 14px;
 }
 
-/* 轨迹条目（一条 TerminalLog，可含多行） */
-.tl {
+/* 轨迹条目（一条 TerminalLog，可含多行）
+   注意：显式 block——曾因 TitleBar.css 全局裸类 .tl（红绿灯圆点 inline-block）命中本类导致布局塌陷，改名 term-line 并显式声明 display 以绝后患 */
+.term-line {
+  display: block;
   margin-bottom: 5px;
   flex-shrink: 0; /* 防纵向滚动容器压缩行高 */
 }
 
 /* 单物理行：时间戳 + 提示符/前缀 + 正文 */
-.tl-row {
+.term-row {
   display: flex;
   gap: 7px;
   white-space: nowrap;
@@ -83,7 +85,7 @@
   align-items: baseline;
 }
 
-.tl-row .ts {
+.term-row .ts {
   color: #c2c5ca;
   flex-shrink: 0;
   width: 52px;
@@ -92,14 +94,14 @@
   font-size: 10px;
 }
 
-.tl-row .sym {
+.term-row .sym {
   flex-shrink: 0;
   width: 12px;
   text-align: center;
   color: #8a8d93;
 }
 
-.tl-row .body {
+.term-row .body {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -107,73 +109,73 @@
 }
 
 /* 续行（多行输出的第 2+ 行）稍弱化 */
-.tl-row .body.cont {
+.term-row .body.cont {
   color: #8a8d93;
 }
 
 /* —— kind 配色 —— */
 
 /* sys：系统横幅（顶底双线感） */
-.tl.sys {
+.term-line.sys {
   border-top: 1px solid #e8e8ea;
   border-bottom: 1px solid #e8e8ea;
   padding: 5px 0;
   margin: 2px 0 8px;
 }
 
-.tl.sys .body {
+.term-line.sys .body {
   color: #6a6f78;
   font-weight: 600;
 }
 
-.tl.sys .body.cont {
+.term-line.sys .body.cont {
   color: #9a9ea6;
   font-weight: 500;
 }
 
 /* prompt：用户输入（❯ 提示符 + 青蓝加粗） */
-.tl.prompt .sym { color: #3a8fae; }
-.tl.prompt .body { color: #2d6d88; font-weight: 600; }
+.term-line.prompt .sym { color: #3a8fae; }
+.term-line.prompt .body { color: #2d6d88; font-weight: 600; }
 
 /* think：agent 思考（灰斜体） */
-.tl.think .body { color: #9a9ea6; font-style: italic; }
+.term-line.think .body { color: #9a9ea6; font-style: italic; }
 
 /* cmd：shell 命令（❯ 提示符 + 深青蓝） */
-.tl.cmd .sym { color: #3a8fae; }
-.tl.cmd .body { color: #2d6d88; }
+.term-line.cmd .sym { color: #3a8fae; }
+.term-line.cmd .body { color: #2d6d88; }
 
 /* out：命令/工具原始输出 */
-.tl.out .body { color: #5a5e66; }
-.tl.out .body.cont { color: #8a8d93; }
+.term-line.out .body { color: #5a5e66; }
+.term-line.out .body.cont { color: #8a8d93; }
 
 /* file：文件读写块（路径 + 内容预览，缩进浅底） */
-.tl.file .sym { color: #3a8fae; }
-.tl.file .body {
+.term-line.file .sym { color: #3a8fae; }
+.term-line.file .body {
   color: #4a4e55;
   background: rgba(0, 0, 0, 0.028);
   border-radius: 0 5px 5px 0;
   border-left: 2px solid #cfd8e0;
   padding: 1px 6px;
 }
-.tl.file .body.cont {
+.term-line.file .body.cont {
   color: #8a8d93;
 }
 
 /* tool：工具调用（⚡ + 紫蓝） */
-.tl.tool .sym { color: #7c66d8; }
-.tl.tool .body { color: #6a58c0; font-weight: 600; }
+.term-line.tool .sym { color: #7c66d8; }
+.term-line.tool .body { color: #6a58c0; font-weight: 600; }
 
 /* ok：成功 */
-.tl.ok .sym { color: #4a8a4a; }
-.tl.ok .body { color: #4a8a4a; font-weight: 600; }
+.term-line.ok .sym { color: #4a8a4a; }
+.term-line.ok .body { color: #4a8a4a; font-weight: 600; }
 
 /* err：失败 */
-.tl.err .sym { color: #c05252; }
-.tl.err .body { color: #c05252; font-weight: 600; }
+.term-line.err .sym { color: #c05252; }
+.term-line.err .body { color: #c05252; font-weight: 600; }
 
 /* info：阶段提示 */
-.tl.info .sym { color: #5b7ba6; }
-.tl.info .body { color: #5b7ba6; }
+.term-line.info .sym { color: #5b7ba6; }
+.term-line.info .body { color: #5b7ba6; }
 
 /* 空态：闪烁光标 */
 .term-empty .body {

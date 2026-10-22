@@ -3,7 +3,7 @@
 用 React 模拟 macOS 风格 "Loom" AI 编程助手应用界面（依据截图 `截屏2026-08-26 13.18.01_1.png` 还原）。
 
 > 创建日期：2026-08-26
-> 更新日期：2026-10-22（窗口贴边占满桌面（padding 24→6px）；格 1 标题改「项目名 · 会话」+ 编辑项目铅笔 icon 迁入格 1 头部（格 2 删编辑按钮）；技术方案见 `docs/项目中心-详情页四格布局-技术方案.md`）
+> 更新日期：2026-10-22（格 3 Agent CLI 乱码修复：根因为 TitleBar.css 全局 `.tl` 类命中终端轨迹导致布局塌陷，`.tl`→`.term-line`/`.term-row` 改名 + TitleBar `.tl` 作用域化；全项目 mono 字体栈补 CJK 等宽回退；技术方案见 `docs/项目中心-AgentCLI字体渲染修复-技术方案.md`）
 
 ## 技术栈
 
@@ -140,3 +140,4 @@ src/
 - 2026-10-22：三点修复——① 格 1 编辑铅笔 icon 再改为**点击项目名打开编辑弹窗**（`.rail-proj-btn` 按钮，hover 微底）；② **格 2 输入框置底**（`.chat-pane/.session-rail/.terminal-pane` 补 `flex: 1` 撑满 detail-cell，消息少时输入框不浮起）；③ 成员抽屉底部删说明文案（开发期迁移提示，非用户内容）
 - 2026-10-22：成员管理与日志增强——① **成员添加/编辑迁入「编辑项目」弹窗**（新增项目成员区块：成员列表 + 每行「编辑」→ 独立 FormModal（姓名编辑态只读/职位/权限 + 移除成员 + 唯一项目负责人保护）+「＋ 添加成员」弹窗）；② **成员权限说明**放入成员弹窗内（项目负责人/管理员/无三档语义）；③ 格 2 抽屉改为**「会话成员」只读**（删「＋ 添加」与行内编辑，新增「接入的 ADE」只读分组 + 底部入口指引）；④ 工具日志 Mock 增强：auto 派生补**底层命令行**（git fetch/npm ci/npm test/npm run build/lint + `↳` 产物缩进行，j1 messages 补「开始执行：」触发）、manual 会话 logs 扩充工具链（tool:context/gateway/kb/fs）；Playwright 两轮验证 7/8 + 复验全 PASS
 - 2026-10-22：四点修复 + **格 3 重构为 Agent CLI**——① 格 1 ＋ 按钮 `margin-left: auto` 推到最右；② 格 2 会话名**点击改名**（点击标题 → input，回车/失焦保存、Esc 取消，格 1 列表联动更新）；③ 格 4 面板 `width: 100% + align-items: stretch + .section-card 撑满`（内容占满格宽）；④ 格 3 从「日志」正名为 **Agent CLI 模式**（鹿鹿子大王）：`TerminalLog` 重构为 10 类行（sys/prompt/think/cmd/out/file/tool/ok/err/info），`runLogsOf` 每条消息展开完整 agent loop（思考→工具调用→命令→原始输出→文件读写预览→结果）；manual 会话 logs 重写为 CLI 轨迹（fs(read)/fs(write) 含文件内容预览）；行高塌陷修复（`.tl` 补 `flex-shrink: 0` + 逐物理行渲染多行文本）；亲自读图验收三张截图（auto/manual 轨迹完整、行距正常、右栏占满）
+- 2026-10-22：**格 3 Agent CLI「乱码」根治**（鹿鹿子大王反馈）——真根因：`TitleBar.css` 全局裸类 `.tl`（红绿灯圆点 12×12 inline-block）命中终端轨迹条目 `.tl`，26 条轨迹被压成小圆点盒子横向流式排列、文字 0 宽叠印成墨带（首轮误诊为字体回退问题，用户复核截图否定后二次定位）；修复：轨迹条目 `.tl`→**`.term-line`** + 物理行 `.tl-row`→**`.term-row`**（显式 `display:block` 防复发）+ TitleBar 红绿灯 `.tl` 作用域化到 `.traffic-lights`；附带全项目 mono 字体栈补 `'Noto Sans Mono CJK SC'` CJK 等宽回退（13 处，Linux 下中英 2:1 等宽对齐）；Playwright 几何测量（y 重叠 0、文本宽 152px、红绿灯正常）+ 亲自读图三重验收；技术方案见 `docs/项目中心-AgentCLI字体渲染修复-技术方案.md`

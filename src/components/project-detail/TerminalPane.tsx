@@ -64,9 +64,9 @@ export default function TerminalPane({ project, activeSession }: TerminalPanePro
     const prefix = KIND_PREFIX[l.kind]
     const showPrompt = l.kind === 'cmd' || l.kind === 'prompt'
     return (
-      <div key={l.id} className={`tl ${l.kind}`}>
+      <div key={l.id} className={`term-line ${l.kind}`}>
         {lines.map((line, i) => (
-          <div key={i} className="tl-row">
+          <div key={i} className="term-row">
             {i === 0 && <span className="ts">{l.time}</span>}
             {i > 0 && <span className="ts" />}
             {i === 0 && showPrompt && <span className="sym">❯</span>}
@@ -91,8 +91,8 @@ export default function TerminalPane({ project, activeSession }: TerminalPanePro
         {logs.length > 0 ? (
           logs.map(renderLog)
         ) : (
-          <div className="tl term-empty">
-            <div className="tl-row">
+          <div className="term-line term-empty">
+            <div className="term-row">
               <span className="ts" />
               <span className="sym">❯</span>
               <span className="body">

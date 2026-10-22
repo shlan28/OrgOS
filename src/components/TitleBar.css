@@ -15,22 +15,23 @@
   margin-right: 18px;
 }
 
-.tl {
+/* 红绿灯圆点（作用域化到 .traffic-lights 内——裸类 .tl 曾与 TerminalPane 的终端轨迹 .tl 冲突导致布局塌陷） */
+.traffic-lights .tl {
   width: 12px;
   height: 12px;
   border-radius: 50%;
   display: inline-block;
 }
 
-.tl.close {
+.traffic-lights .tl.close {
   background: #ff5f57;
 }
 
-.tl.minimize {
+.traffic-lights .tl.minimize {
   background: #febc2e;
 }
 
-.tl.maximize {
+.traffic-lights .tl.maximize {
   background: #28c840;
 }
 
