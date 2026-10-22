@@ -185,6 +185,13 @@
 
   .text-btn { border: none; background: transparent; font-size: 12px; font-family: inherit;
     color: var(--text-secondary); cursor: pointer; padding: 3px 6px; border-radius: 6px; }
+
+  /* 设置页页头 × 关闭按钮（v1.1） */
+  .settings-close { border: none; background: transparent; width: 30px; height: 30px;
+    border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-secondary); cursor: pointer; font-size: 15px; line-height: 1;
+    font-family: inherit; margin-bottom: 2px; }
+  .settings-close:hover { background: rgba(0,0,0,.05); color: var(--text-primary); }
   .text-btn:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
   .text-btn.danger { color: var(--status-danger); }
   .text-btn.ghost { color: var(--text-secondary); border: 1px solid var(--border); }
@@ -289,7 +296,7 @@
   <div class="win-cap">
     <span class="tag">图 1</span>
     <h2>入口：点击左下角用户名 → 向上弹出菜单（含「设置」）</h2>
-    <span class="sub">菜单底边贴合用户区上沿，点击外部 / Esc 关闭</span>
+    <span class="sub">单项菜单 · 点击外部 / Esc 关闭 · 点「设置」进入设置页</span>
   </div>
   <div class="win">
     <div class="win-titlebar">
@@ -315,22 +322,7 @@
         <div class="sidebar-user-wrap">
           <!-- 向上弹出菜单 -->
           <div class="user-menu">
-            <div class="um-head">
-              <span class="avatar">S</span>
-              <span>
-                <span class="nm">shilu</span>
-                <span class="ml">shilu@aicoda.tech</span>
-              </span>
-            </div>
-            <div class="pm-sep"></div>
-            <div class="pm-group">账号</div>
-            <button class="pm-item"><span class="ic">👤</span><span>个人资料</span></button>
-            <button class="pm-item"><span class="ic">🎛</span><span>偏好设置</span></button>
-            <div class="pm-sep"></div>
-            <div class="pm-group">其他</div>
-            <button class="pm-item"><span class="ic">❔</span><span>帮助与反馈</span></button>
-            <div class="pm-sep"></div>
-            <button class="pm-item hi"><span class="ic">⚙️</span><span>设置</span><span class="val">Agent · 成员</span></button>
+            <button class="pm-item hi"><span class="ic">⚙️</span><span>设置</span></button>
           </div>
           <button class="sidebar-user open">
             <span class="avatar">S</span>
@@ -351,7 +343,7 @@
       </main>
     </div>
   </div>
-  <p class="anno">↑ 菜单结构：头部（头像 + 姓名 + 邮箱）→ 分组「账号」→ 分组「其他」→「设置」（本次实现项，其余为占位）</p>
+  <p class="anno">↑ v1.1：菜单精简为单项「设置」（头部 / 账号 / 其他占位项已删除），点「设置」进入设置页</p>
 
   <!-- ========== 图 2：设置页 - Agent 设置 ========== -->
   <div class="win-cap">
@@ -392,7 +384,7 @@
                 <div class="page-title">设置</div>
                 <div class="page-subtitle">管理你的 Agent 默认配置与组织成员</div>
               </div>
-              <button class="text-btn ghost" style="margin-bottom:4px">‹ 返回</button>
+              <button class="settings-close" title="关闭设置">✕</button>
             </div>
           </div>
 
@@ -559,7 +551,7 @@
                 <div class="page-title">设置</div>
                 <div class="page-subtitle">管理你的 Agent 默认配置与组织成员</div>
               </div>
-              <button class="text-btn ghost" style="margin-bottom:4px">‹ 返回</button>
+              <button class="settings-close" title="关闭设置">✕</button>
             </div>
           </div>
 
