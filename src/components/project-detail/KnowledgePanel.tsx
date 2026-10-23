@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Knowledge, DocLibrary } from '../../data/projects'
 import SegmentedControl from '../SegmentedControl'
 import DocLibraryView from './DocLibraryView'
+import KbIndexPanel from './KbIndexPanel'
 import './KnowledgePanel.css'
 
 interface KnowledgePanelProps {
@@ -27,6 +28,8 @@ function scrollToTop(el: HTMLElement | null) {
 
 /**
  * 「文档和知识库」面板：顶部分段切换（文档 / 项目知识库）。
+ * - 文档：DocLibraryView（目录树 + 文档列表 + 导入/预览/编辑）
+ * - 项目知识库：KbIndexPanel（收录清单 + 索引状态 + 检索测试）
  * 记忆已拆出为独立顶级 tab「记忆」（MemoryPanel）。
  */
 export default function KnowledgePanel({
@@ -38,9 +41,6 @@ export default function KnowledgePanel({
   useEffect(() => {
     scrollToTop(rootRef.current)
   }, [segment])
-
-  const kbLibrary: DocLibrary = { folders: knowledge.folders, docs: knowledge.docs }
-  const updateKbLibrary = (lib: DocLibrary) => onUpdateKnowledge({ ...knowledge, ...lib })
 
   return (
     <div className="knowledge-panel" ref={rootRef}>
@@ -54,7 +54,7 @@ export default function KnowledgePanel({
       />
       {segment === 'docs'
         ? <DocLibraryView library={documents} onUpdateLibrary={onUpdateDocuments} />
-        : <DocLibraryView library={kbLibrary} onUpdateLibrary={updateKbLibrary} />}
+        : <KbIndexPanel knowledge={knowledge} onUpdateKnowledge={onUpdateKnowledge} />}
     </div>
   )
 }

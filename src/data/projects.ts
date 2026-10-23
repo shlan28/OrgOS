@@ -430,7 +430,10 @@ export interface KbFolder {
   parentId?: string
 }
 
-/** 项目知识库文档（统一形态：点击进入二级页面预览/编辑） */
+/** 知识库文档索引状态机（项目知识库收录清单用） */
+export type KbIndexState = 'off' | 'pending' | 'indexing' | 'indexed' | 'failed' | 'stale'
+
+/** 项目知识库文档（统一形态：收录清单 + 索引状态） */
 export interface KbDoc {
   id: string
   title: string
@@ -446,6 +449,14 @@ export interface KbDoc {
   content: { heading: string; body: string }[]
   /** 摘要（列表行次级文案展示用） */
   summary: string
+  /** 索引状态（项目知识库收录状态机；「文档」子 tab 的 documents 不带该字段 = 视作 off） */
+  indexState?: KbIndexState
+  /** 已索引片段数（off 清零；统计条「片段」= 全库求和） */
+  chunks?: number
+  /** 最近一次索引完成时间（indexing 结束刷新） */
+  indexedAt?: string
+  /** failed 时的失败原因 */
+  errorText?: string
 }
 
 /** 文档库（「文档和知识库」tab 的「文档」子 tab：目录树 + 文档列表，与项目知识库同构） */
@@ -1203,25 +1214,14 @@ export const projects: Project[] = [
     ],
     knowledge: {
       folders: [
-        { id: 'f1', name: '架构' },
-        { id: 'f3', name: '组件设计', parentId: 'f1' },
-        { id: 'f2', name: '接口' },
+        { id: 'f1', name: '产品' },
+        { id: 'f2', name: '研发' },
       ],
       docs: [
-        {
-          id: 'd0', title: '模块分布说明', source: '手动', sourceRef: '', folderId: 'f3',
-          importedAt: '08-25', updatedAt: '08-25',
-          markdown: '# 模块分布说明\n\n## src/\n\n业务组件与入口。\n\n## docs/\n\n方案与说明文档。\n\n## components/\n\n通用组件。',
-          content: [
-            { heading: 'src/', body: '业务组件与入口。' },
-            { heading: 'docs/', body: '方案与说明文档。' },
-            { heading: 'components/', body: '通用组件。' },
-          ],
-          summary: 'src/ 放业务组件与入口，docs/ 放方案文档，components/ 放通用组件。',
-        },
+        /* —— 产品 7 篇（收录 5：indexed 3 + stale 1 + indexing 1；未收录 2） —— */
         {
           id: 'd1', title: 'Loom 架构设计说明', source: '团队 wiki', sourceRef: 'wiki/loom/arch', folderId: 'f1',
-          importedAt: '08-23', updatedAt: '08-23',
+          importedAt: '08-23', updatedAt: '10-21',
           markdown: '# Loom 架构设计说明\n\n## 技术选型\n\n整体采用 Vite + React 18。\n\n## 样式方案\n\n组件级 CSS 隔离。\n\n## 状态管理\n\n状态走局部 useState，不引入全局状态库。',
           content: [
             { heading: '技术选型', body: '整体采用 Vite + React 18，构建快、热更新稳定。' },
@@ -1229,9 +1229,72 @@ export const projects: Project[] = [
             { heading: '状态管理', body: '状态走局部 useState，不引入全局状态库，保持简单可预测。' },
           ],
           summary: '整体采用 Vite + React 18，组件级 CSS 隔离，状态走局部 useState，不引入全局状态库。',
+          indexState: 'indexed', chunks: 52, indexedAt: '10-21 14:02',
         },
         {
-          id: 'd2', title: '接口约定 v2', source: 'GitLab 文档', sourceRef: 'gitlab/docs/api-v2', folderId: 'f2',
+          id: 'd2', title: '多视窗交互规格', source: '团队 wiki', sourceRef: 'wiki/loom/multiview', folderId: 'f1',
+          importedAt: '09-02', updatedAt: '10-20',
+          markdown: '# 多视窗交互规格\n\n## 入口\n\n首页右上角多视窗按钮。\n\n## 四窗格\n\n切分 2×2，当前会话进左上。\n\n## 重置\n\n关闭重开重置回初始 2×2。',
+          content: [
+            { heading: '入口', body: '首页右上角多视窗按钮：切分为 2×2 四窗格，当前会话进左上聚焦格。' },
+            { heading: '四窗格', body: '空窗格「＋ 打开会话」弹会话选择浮层；窗格 × 置回未分配。' },
+            { heading: '重置', body: '关闭多视窗重开重置回初始 2×2。' },
+          ],
+          summary: '多视窗：2×2 四窗格、空窗格打开会话浮层、重开重置 2×2。',
+          indexState: 'stale', chunks: 48, indexedAt: '09-28 16:40', errorText: '文档于 10-20 更新，索引已过期，需重建',
+        },
+        {
+          id: 'd3', title: '项目中心文件夹层级说明', source: '团队 wiki', sourceRef: 'wiki/loom/folders', folderId: 'f1',
+          importedAt: '09-10', updatedAt: '09-10',
+          markdown: '# 文件夹层级\n\n## 下钻\n\n点击文件夹卡片下钻。\n\n## 面包屑\n\n项目中心 › 文件夹名。\n\n## 移动\n\n项目卡片 ⋯ 菜单移动到。',
+          content: [
+            { heading: '下钻', body: '顶层 = 文件夹卡片 + 未分组项目；点击文件夹卡片下钻。' },
+            { heading: '面包屑', body: '项目中心 › 文件夹名，点面包屑返回。' },
+          ],
+          summary: '文件夹卡片下钻 + 面包屑返回 + 项目移动到文件夹。',
+          indexState: 'indexed', chunks: 38, indexedAt: '10-19 09:30',
+        },
+        {
+          id: 'd4', title: '支付链路时序图说明', source: 'GitLab 文档', sourceRef: 'gitlab/docs/pay-seq', folderId: 'f1',
+          importedAt: '10-15', updatedAt: '10-15',
+          markdown: '# 支付链路时序\n\n## 收银台\n\n统一收口。\n\n## 幂等\n\n回调需幂等。\n\n## 对账\n\nT+1 定时对账。',
+          content: [
+            { heading: '收银台', body: '所有支付请求统一经收银台收口分发。' },
+            { heading: '幂等', body: '回调需幂等处理，重试不重复入账。' },
+          ],
+          summary: '收银台统一收口、回调幂等、T+1 对账。',
+          indexState: 'indexing', chunks: 0,
+        },
+        {
+          id: 'd5', title: '首页信息架构', source: '团队 wiki', sourceRef: 'wiki/loom/home-ia', folderId: 'f1',
+          importedAt: '08-30', updatedAt: '08-30',
+          markdown: '# 首页信息架构\n\n## 主区\n\n大标题 + 输入卡片。\n\n## 多视窗\n\n开启后窗格保留标题栏与简化输入条。',
+          content: [
+            { heading: '主区', body: '大标题 + 输入卡片 + 上下文选择器。' },
+            { heading: '多视窗', body: '开启多视窗后每个窗格保留标题栏与简化输入条。' },
+          ],
+          summary: '首页：大标题 + 输入卡片；多视窗窗格含标题栏与输入条。',
+          indexState: 'indexed', chunks: 44, indexedAt: '10-01 11:15',
+        },
+        {
+          id: 'd6', title: '设计规范色板与字号', source: '本地文件', sourceRef: 'design/tokens.md', folderId: 'f1',
+          importedAt: '09-18', updatedAt: '09-18',
+          markdown: '# 设计规范\n\n## 色板\n\n主色/状态色/中性色。\n\n## 字号\n\n正文 13px，辅助 11.5px。',
+          content: [{ heading: '色板', body: '主色/状态色/中性色三组 token。' }],
+          summary: '设计 token：色板三组 + 字号阶梯。',
+          indexState: 'off', chunks: 0,
+        },
+        {
+          id: 'd7', title: '竞品调研纪要', source: '本地文件', sourceRef: 'research/competitors.md', folderId: 'f1',
+          importedAt: '09-25', updatedAt: '09-25',
+          markdown: '# 竞品调研\n\n## Cursor\n\n多文件编辑强。\n\n## Copilot\n\nIDE 集成深。',
+          content: [{ heading: '要点', body: 'Cursor 多文件编辑强；Copilot IDE 集成深。' }],
+          summary: '竞品：Cursor 多文件编辑 / Copilot IDE 集成。',
+          indexState: 'off', chunks: 0,
+        },
+        /* —— 研发 4 篇（收录 3：indexed 2 + failed 1；未收录 1） —— */
+        {
+          id: 'd8', title: '接口约定 v2', source: 'GitLab 文档', sourceRef: 'gitlab/docs/api-v2', folderId: 'f2',
           importedAt: '08-21', updatedAt: '08-21',
           markdown: '# 接口约定 v2\n\n## 风格\n\n统一 RESTful 风格。\n\n## 错误码\n\n错误码走业务前缀。\n\n## 分页\n\n分页参数固定 page / size。',
           content: [
@@ -1240,6 +1303,105 @@ export const projects: Project[] = [
             { heading: '分页', body: '分页参数固定 page / size，返回体统一带 total。' },
           ],
           summary: '统一 RESTful 风格，错误码走业务前缀，分页参数固定 page / size。',
+          indexState: 'failed', chunks: 0, errorText: '解析超时：文档含超长表格，切片阶段超过 30s 限制',
+        },
+        {
+          id: 'd9', title: '模块分布说明', source: '手动', sourceRef: '', folderId: 'f2',
+          importedAt: '08-25', updatedAt: '08-25',
+          markdown: '# 模块分布说明\n\n## src/\n\n业务组件与入口。\n\n## docs/\n\n方案与说明文档。\n\n## components/\n\n通用组件。',
+          content: [
+            { heading: 'src/', body: '业务组件与入口。' },
+            { heading: 'docs/', body: '方案与说明文档。' },
+            { heading: 'components/', body: '通用组件。' },
+          ],
+          summary: 'src/ 放业务组件与入口，docs/ 放方案文档，components/ 放通用组件。',
+          indexState: 'indexed', chunks: 58, indexedAt: '10-12 10:08',
+        },
+        {
+          id: 'd10', title: '构建与发布流水线', source: 'GitLab 文档', sourceRef: 'gitlab/docs/ci-cd', folderId: 'f2',
+          importedAt: '09-05', updatedAt: '09-05',
+          markdown: '# 构建与发布\n\n## 流水线\n\ntest → build → deploy。\n\n## 环境变量\n\n按环境注入。',
+          content: [
+            { heading: '流水线', body: 'test → build → deploy 三段。' },
+            { heading: '环境变量', body: '按环境注入，不落仓。' },
+          ],
+          summary: '流水线三段式 + 环境变量按环境注入。',
+          indexState: 'indexed', chunks: 46, indexedAt: '10-08 15:22',
+        },
+        {
+          id: 'd11', title: '数据库变更记录', source: 'GitLab 文档', sourceRef: 'gitlab/docs/db-changelog', folderId: 'f2',
+          importedAt: '10-02', updatedAt: '10-02',
+          markdown: '# 数据库变更\n\n## 迁移\n\n统一走 migration 脚本。',
+          content: [{ heading: '迁移', body: '统一走 migration 脚本，禁止手改线上库。' }],
+          summary: '数据库变更统一走 migration 脚本。',
+          indexState: 'off', chunks: 0,
+        },
+        /* —— 未分组 7 篇（收录 4：indexed 4；未收录 3） —— */
+        {
+          id: 'd12', title: '埋点字段字典', source: '团队 wiki', sourceRef: 'wiki/loom/tracking', folderId: '',
+          importedAt: '08-28', updatedAt: '08-28',
+          markdown: '# 埋点字段字典\n\n## 页面级\n\npage_id + 参数。\n\n## 点击级\n\nelement_id。',
+          content: [
+            { heading: '页面级', body: 'page_id + 关键参数。' },
+            { heading: '点击级', body: 'element_id + 上下文。' },
+          ],
+          summary: '埋点：页面级 page_id、点击级 element_id。',
+          indexState: 'indexed', chunks: 60, indexedAt: '09-30 09:44',
+        },
+        {
+          id: 'd13', title: '灰度发布 SOP', source: '团队 wiki', sourceRef: 'wiki/ops/gray-release', folderId: '',
+          importedAt: '09-14', updatedAt: '09-14',
+          markdown: '# 灰度发布 SOP\n\n## 阶段\n\n10% → 50% → 全量。\n\n## 回滚\n\n崩溃率超阈值回滚。',
+          content: [
+            { heading: '阶段', body: '10% → 50% → 全量。' },
+            { heading: '回滚', body: '每阶段观察 24 小时，崩溃率超阈值回滚。' },
+          ],
+          summary: '灰度三阶段放量 + 阈值回滚。',
+          indexState: 'indexed', chunks: 42, indexedAt: '10-05 14:50',
+        },
+        {
+          id: 'd14', title: '故障复盘 0817', source: '手动', sourceRef: '', folderId: '',
+          importedAt: '08-18', updatedAt: '08-18',
+          markdown: '# 故障复盘 0817\n\n## 现象\n\n登录偶发 502。\n\n## 根因\n\n连接池耗尽。\n\n## 措施\n\n池上限 + 告警。',
+          content: [
+            { heading: '现象', body: '登录偶发 502。' },
+            { heading: '根因', body: '连接池耗尽。' },
+            { heading: '措施', body: '池上限调整 + 饱和告警。' },
+          ],
+          summary: '0817 故障：连接池耗尽致 502，池上限 + 告警修复。',
+          indexState: 'indexed', chunks: 40, indexedAt: '08-19 10:12',
+        },
+        {
+          id: 'd15', title: '周报归档说明', source: '手动', sourceRef: '', folderId: '',
+          importedAt: '09-01', updatedAt: '09-01',
+          markdown: '# 周报归档\n\n## 频率\n\n每周五 18:00。\n\n## 存储\n\n归档至知识库。',
+          content: [{ heading: '说明', body: '每周五 18:00 由自动化任务归档至知识库。' }],
+          summary: '周报每周五归档入知识库。',
+          indexState: 'indexed', chunks: 30, indexedAt: '09-02 09:00',
+        },
+        {
+          id: 'd16', title: '新成员环境搭建指南', source: '本地文件', sourceRef: 'onboarding/setup.md', folderId: '',
+          importedAt: '09-22', updatedAt: '09-22',
+          markdown: '# 环境搭建\n\n## 依赖\n\nNode 20 + npm 10。\n\n## 步骤\n\nnpm install → npm run dev。',
+          content: [{ heading: '步骤', body: 'Node 20 + npm 10，install 后 dev。' }],
+          summary: '环境：Node 20，install 后 run dev。',
+          indexState: 'off', chunks: 0,
+        },
+        {
+          id: 'd17', title: 'API Mock 数据规范', source: '本地文件', sourceRef: 'mock/api-spec.md', folderId: '',
+          importedAt: '10-06', updatedAt: '10-06',
+          markdown: '# API Mock\n\n## 命名\n\n按资源复数。\n\n## 位置\n\nsrc/data/。',
+          content: [{ heading: '说明', body: 'Mock 按资源复数命名，放 src/data/。' }],
+          summary: 'API Mock 命名与位置约定。',
+          indexState: 'off', chunks: 0,
+        },
+        {
+          id: 'd18', title: '历史设计稿索引', source: '本地文件', sourceRef: 'design/archive.md', folderId: '',
+          importedAt: '08-15', updatedAt: '08-15',
+          markdown: '# 历史设计稿\n\n## 归档\n\n按版本目录存放。',
+          content: [{ heading: '归档', body: '按版本目录存放历史设计稿。' }],
+          summary: '历史设计稿按版本归档。',
+          indexState: 'off', chunks: 0,
         },
       ],
       memories: [
@@ -1722,6 +1884,7 @@ export const projects: Project[] = [
             { heading: 'common/', body: '公共能力。' },
           ],
           summary: 'app/ 按业务模块划分，gateway/ 负责渠道路由，common/ 放公共能力。',
+          indexState: 'off', chunks: 0,
         },
         {
           id: 'd1', title: '支付链路设计', source: '团队 wiki', sourceRef: 'wiki/yigou/pay', folderId: 'f1',
@@ -1733,6 +1896,7 @@ export const projects: Project[] = [
             { heading: '客户端', body: '客户端不感知渠道差异，只对接收银台统一协议。' },
           ],
           summary: '统一收银台收口，渠道路由在网关层完成，客户端不感知渠道差异。',
+          indexState: 'indexed', chunks: 36, indexedAt: '08-21 10:30',
         },
       ],
       memories: [
