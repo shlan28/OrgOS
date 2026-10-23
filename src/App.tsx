@@ -8,7 +8,7 @@ import ProjectDetail from './components/ProjectDetail'
 import SettingsPage, { type SettingsSection } from './components/SettingsPage'
 import HomeGrid, { type PaneSession } from './components/home-grid/HomeGrid'
 import { projects as initialProjects, projectFolders as initialFolders, createFolderMembers, type Notification, type Project, type ProjectFolder } from './data/projects'
-import { createDefaultUserSettings, createDefaultInviteData, type InviteData, type UserSettings } from './data/settings'
+import { createDefaultUserSettings, createDefaultInviteData, type FeishuSettings, type InviteData, type UserSettings } from './data/settings'
 import { useAutomationEngine } from './hooks/useAutomationEngine'
 import { MultiViewIcon } from './components/icons'
 
@@ -48,6 +48,18 @@ export default function App() {
   /** 各面板写操作的统一入口：按 updater 更新指定项目（本地 state，不持久化） */
   const handleUpdateProject = (projectId: string, updater: (p: Project) => Project) => {
     setProjects((list) => list.map((p) => (p.id === projectId ? updater(p) : p)))
+  }
+
+  /** 飞书授权状态写回（全局共享：设置页与「文档」子 tab 导入弹窗共用） */
+  const handleUpdateFeishu = (updater: (f: FeishuSettings) => FeishuSettings) => {
+    setUserSettings((s) => ({ ...s, feishu: updater(s.feishu) }))
+  }
+
+  /** 跳转设置页「飞书授权」分区（导入弹窗未配置凭证引导） */
+  const handleGoToFeishuSettings = () => {
+    prevViewRef.current = view
+    setSettingsSection('feishu')
+    setView({ type: 'settings' })
   }
 
   /** 通知跳转：进入对应项目详情 → 自动化任务 tab → 待人工处理 segment → 高亮定位任务卡片 */
@@ -187,6 +199,9 @@ export default function App() {
                 engine={engine}
                 initialNav={view.initialNav}
                 focusJobId={view.focusJobId}
+                feishu={userSettings.feishu}
+                onUpdateFeishu={handleUpdateFeishu}
+                onGoToFeishuSettings={handleGoToFeishuSettings}
               />
             )}
 

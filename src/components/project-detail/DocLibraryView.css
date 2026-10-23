@@ -1,0 +1,376 @@
+/* ===== 「文档」子 tab（DocLibraryView · 飞书化）：多选导入弹窗 + 对齐 kbi 样式 ===== */
+
+/* 容器：对齐项目知识库 kbi 双栏 */
+.doclib-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.doclib-two-col {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* 右列表工具行（复用 kbi-list-tools 布局：左标题 + 右操作） */
+.doclib-list-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.doclib-tools-acts {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* 行尾 ⇗ 跳飞书按钮（kbi-row 体系内右对齐） */
+.doc-jump-btn {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: #9aa3b2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+
+.doc-jump-btn:hover {
+  color: #3370ff;
+  background: #eef2ff;
+}
+
+.kbi-row:hover .doc-jump-btn {
+  color: #3370ff;
+}
+
+/* 「从飞书导入」入口按钮（飞书蓝描边） */
+.fs-import-btn {
+  border: 1px solid #3370ff;
+  background: #eef2ff;
+  color: #3370ff;
+  border-radius: 7px;
+  padding: 3px 11px;
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.fs-import-btn:hover {
+  background: #e2e9ff;
+}
+
+/* ===== 飞书 OAuth 导入弹窗（多选） ===== */
+
+.fs-import-modal {
+  width: 560px;
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 凭证未配置警示条 */
+.fs-cred-warn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--status-warning-bg);
+  border: 1px solid #ecd9b8;
+  border-radius: 9px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: var(--status-warning);
+  margin-bottom: 12px;
+}
+
+.fs-warn-act {
+  margin-left: auto;
+  border: 1px solid #d9c094;
+  background: #fff;
+  color: var(--status-warning);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fs-warn-act:hover {
+  background: #fdf3e2;
+}
+
+/* 步骤条 */
+.fs-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.fs-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.fs-step-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 10.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fs-step.active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.fs-step.active .fs-step-num {
+  background: var(--text-primary);
+  color: #fff;
+  border-color: var(--text-primary);
+}
+
+.fs-step.done {
+  color: var(--status-success);
+}
+
+.fs-step.done .fs-step-num {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border-color: #bfe0c8;
+}
+
+.fs-step-arrow {
+  color: #c2c5ca;
+  font-size: 11px;
+}
+
+/* 步骤 1：授权卡 */
+.fs-auth-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.fs-auth-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.fs-auth-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', monospace;
+}
+
+.fs-auth-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--status-success);
+}
+
+.fs-ok-badge {
+  font-size: 10px;
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-weight: 700;
+}
+
+.fs-auth-btn {
+  margin-top: 10px;
+  border: none;
+  background: #3370ff;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 18px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.fs-auth-btn:hover:not(:disabled) {
+  background: #2b5fe0;
+}
+
+.fs-auth-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 步骤 2：飞书目录树（多层级 + 多选 checkbox） */
+.fs-tree-wrap {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+}
+
+.fs-tree {
+  flex: 1;
+  overflow: auto;
+  padding: 6px;
+}
+
+/* 行：checkbox + 名称按钮 横向组合 */
+.fs-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+
+.fs-tree-item.sel {
+  background: #eef2ff;
+}
+
+/* 多选 checkbox（目录三态） */
+.fs-check {
+  border: 1.5px solid #c2c5ca;
+  background: #fff;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  line-height: 1;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.fs-check:hover {
+  border-color: #3370ff;
+}
+
+.fs-check.on {
+  background: #3370ff;
+  border-color: #3370ff;
+}
+
+.fs-check.part {
+  background: #3370ff;
+  border-color: #3370ff;
+  opacity: 0.55;
+}
+
+/* 名称按钮（点目录 = 展开/折叠） */
+.fs-tree-label {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.fs-tree-caret {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: #b0b4ba;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fs-tree-caret svg {
+  transition: transform 0.15s ease;
+}
+
+.fs-tree-caret.open svg {
+  transform: rotate(90deg);
+}
+
+.fs-tree-caret-sp {
+  width: 13px;
+  flex-shrink: 0;
+}
+
+.fs-tree-dir {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-icon);
+}
+
+.fs-tree-doc {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-icon);
+}
+
+.fs-tree-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-tree-count {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}

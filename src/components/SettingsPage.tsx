@@ -2,15 +2,17 @@ import { useEffect } from 'react'
 import type { InviteData, UserSettings } from '../data/settings'
 import AgentSettingsPanel from './settings/AgentSettingsPanel'
 import InviteMembersPanel from './settings/InviteMembersPanel'
-import { RobotIcon, UsersIcon } from './icons'
+import FeishuPanel from './settings/FeishuPanel'
+import { RobotIcon, UsersIcon, FeishuIcon } from './icons'
 import './SettingsPage.css'
 
 /** 设置页左导航项 */
-export type SettingsSection = 'agent' | 'invite'
+export type SettingsSection = 'agent' | 'invite' | 'feishu'
 
 const NAV_ITEMS: { key: SettingsSection; label: string; icon: (s: number) => React.ReactNode }[] = [
   { key: 'agent', label: 'Agent 设置', icon: (s) => <RobotIcon size={s} /> },
   { key: 'invite', label: '邀请成员', icon: (s) => <UsersIcon size={s} /> },
+  { key: 'feishu', label: '飞书授权', icon: (s) => <FeishuIcon size={s} /> },
 ]
 
 interface SettingsPageProps {
@@ -82,11 +84,9 @@ export default function SettingsPage({
 
         {/* 右内容 */}
         <div className="settings-content">
-          {section === 'agent' ? (
-            <AgentSettingsPanel settings={settings} onUpdateSettings={onUpdateSettings} />
-          ) : (
-            <InviteMembersPanel invite={invite} onUpdateInvite={onUpdateInvite} />
-          )}
+          {section === 'agent' && <AgentSettingsPanel settings={settings} onUpdateSettings={onUpdateSettings} />}
+          {section === 'invite' && <InviteMembersPanel invite={invite} onUpdateInvite={onUpdateInvite} />}
+          {section === 'feishu' && <FeishuPanel settings={settings} onUpdateSettings={onUpdateSettings} />}
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Knowledge, DocLibrary } from '../../data/projects'
+import type { FeishuSettings } from '../../data/settings'
 import SegmentedControl from '../SegmentedControl'
 import DocLibraryView from './DocLibraryView'
 import KbIndexPanel from './KbIndexPanel'
@@ -12,6 +13,11 @@ interface KnowledgePanelProps {
   /** 知识数据（「项目知识库」子 tab 取 folders/docs；记忆已拆至独立「记忆」tab） */
   knowledge: Knowledge
   onUpdateKnowledge: (k: Knowledge) => void
+  /** 飞书授权设置（「文档」子 tab OAuth 导入用） */
+  feishu: FeishuSettings
+  onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
+  /** 跳转设置页「飞书授权」分区（未配置凭证引导） */
+  onGoToFeishuSettings: () => void
 }
 
 /** 滚动到最近的可滚动祖先顶部 */
@@ -28,12 +34,13 @@ function scrollToTop(el: HTMLElement | null) {
 
 /**
  * 「文档和知识库」面板：顶部分段切换（文档 / 项目知识库）。
- * - 文档：DocLibraryView（目录树 + 文档列表 + 导入/预览/编辑）
+ * - 文档：DocLibraryView（多层级目录树 + 只读文档列表 + ⇗ 跳飞书 + OAuth 导入）
  * - 项目知识库：KbIndexPanel（收录清单 + 索引状态 + 检索测试）
  * 记忆已拆出为独立顶级 tab「记忆」（MemoryPanel）。
  */
 export default function KnowledgePanel({
   documents, onUpdateDocuments, knowledge, onUpdateKnowledge,
+  feishu, onUpdateFeishu, onGoToFeishuSettings,
 }: KnowledgePanelProps) {
   const [segment, setSegment] = useState('docs')
   const rootRef = useRef<HTMLDivElement>(null)
@@ -53,7 +60,15 @@ export default function KnowledgePanel({
         ]}
       />
       {segment === 'docs'
-        ? <DocLibraryView library={documents} onUpdateLibrary={onUpdateDocuments} />
+        ? (
+          <DocLibraryView
+            library={documents}
+            onUpdateLibrary={onUpdateDocuments}
+            feishu={feishu}
+            onUpdateFeishu={onUpdateFeishu}
+            onGoToFeishuSettings={onGoToFeishuSettings}
+          />
+        )
         : <KbIndexPanel knowledge={knowledge} onUpdateKnowledge={onUpdateKnowledge} />}
     </div>
   )

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AdeAgent, Member, Project, ProjectFolder, ProjectSession } from '../data/projects'
 import { CURRENT_USER, memberColorOf, ADE_LLM_BASES, createDefaultAdeConfig } from '../data/projects'
+import type { FeishuSettings } from '../data/settings'
 import FormModal, { ModalField } from './FormModal'
 import SpecsPanel from './project-detail/SpecsPanel'
 import CodePanel from './project-detail/CodePanel'
@@ -69,6 +70,12 @@ interface ProjectDetailProps {
   initialNav?: NavKey
   /** 通知跳转定位的任务 id（切到对应会话） */
   focusJobId?: string | null
+  /** 飞书授权设置（「文档」子 tab OAuth 导入用） */
+  feishu: FeishuSettings
+  /** 授权状态写回（Mock 全局共享） */
+  onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
+  /** 跳转设置页「飞书授权」分区（未配置凭证引导） */
+  onGoToFeishuSettings: () => void
 }
 
 /** 四格列宽比例（flex-grow 权重）：10% / 20% / 35% / 35%——格 3 Agent CLI 与格 4 工作流占大头
@@ -86,6 +93,7 @@ const COLUMN_SPECS = [
  */
 export default function ProjectDetail({
   project, projects, folders, onUpdateProject, engine, initialNav, focusJobId,
+  feishu, onUpdateFeishu, onGoToFeishuSettings,
 }: ProjectDetailProps) {
   // —— 当前会话（格 1/2/3 共享；默认 order 最大，无会话 null） ——
   const [activeSessionId, setActiveSessionId] = useState<string | null>(
@@ -353,6 +361,9 @@ export default function ProjectDetail({
             onUpdateDocuments={(documents) => onUpdateProject(project.id, (p) => ({ ...p, documents }))}
             knowledge={project.knowledge}
             onUpdateKnowledge={(knowledge) => onUpdateProject(project.id, (p) => ({ ...p, knowledge }))}
+            feishu={feishu}
+            onUpdateFeishu={onUpdateFeishu}
+            onGoToFeishuSettings={onGoToFeishuSettings}
           />
         )
       case 'memory':

@@ -32,7 +32,29 @@ export interface UserSettings {
   mcpServices: string[]
   /** ADE.md 个性化内容（Markdown） */
   adeMd: string
+  /** 飞书授权（「文档」子 tab 导入用；设置页「飞书授权」分区配置） */
+  feishu: FeishuSettings
 }
+
+/* —— 飞书授权（文档导入 OAuth） —— */
+
+/** 飞书应用凭证 + 个人授权状态（Mock：授权状态全局共享） */
+export interface FeishuSettings {
+  /** 飞书开放平台 App ID（空 = 未配置，导入弹窗引导去设置） */
+  appId: string
+  /** App Secret（仅本人可见，界面脱敏显示） */
+  appSecret: string
+  /** 是否已完成个人授权（user_access_token） */
+  authorized: boolean
+  /** 授权账号（Mock） */
+  authorizedAccount: string
+  /** 授权时间（Mock 文案） */
+  authorizedAt: string
+}
+
+/** 飞书凭证是否已配置（App ID + Secret 均非空） */
+export const feishuCredReady = (f: FeishuSettings): boolean =>
+  f.appId.trim().length > 0 && f.appSecret.trim().length > 0
 
 /* —— 邀请成员（组织级） —— */
 
@@ -152,6 +174,24 @@ export function createDefaultUserSettings(): UserSettings {
     mcpServices: ['代码仓库 MCP'],
     adeMd: myAdes[0].adeMd,
     tools: { ...myAdes[0].tools },
+    feishu: {
+      appId: 'cli_a3f8e09b2c61',
+      appSecret: 'Kf9sXq2Lm7RtYw4Zp8Nb3Vc6D',
+      authorized: false,
+      authorizedAccount: CURRENT_USER.name,
+      authorizedAt: '',
+    },
+  }
+}
+
+/** 飞书 OAuth 授权 Mock：800ms 授权中后写回已授权态 */
+export function feishuAuthorized(account: string): FeishuSettings {
+  return {
+    appId: '',
+    appSecret: '',
+    authorized: true,
+    authorizedAccount: account,
+    authorizedAt: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-'),
   }
 }
 
