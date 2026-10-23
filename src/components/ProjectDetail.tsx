@@ -42,6 +42,9 @@ const TAB_ITEMS: TabItem[] = [
   { key: 'testing', label: '测试', icon: (s) => <FlaskIcon size={s} />, soon: '敬请期待' },
 ]
 
+/** 默认打开的 tab（自动化统计 / 代码审查 / 安全审查 / 测试默认收起，经 ＋ 菜单重开） */
+const DEFAULT_OPEN_TABS: NavKey[] = ['specs', 'code', 'knowledge', 'memory', 'workflow']
+
 const ALL_TAB_KEYS = TAB_ITEMS.map((t) => t.key as NavKey)
 
 const STATUSES: Project['status'][] = ['规划中', '进行中', '已完成']
@@ -115,7 +118,7 @@ export default function ProjectDetail({
 
   const { cellStyle, startResize, reset } = useResizableColumns(COLUMN_SPECS)
 
-  const [openTabs, setOpenTabs] = useState<NavKey[]>(ALL_TAB_KEYS)
+  const [openTabs, setOpenTabs] = useState<NavKey[]>(DEFAULT_OPEN_TABS)
   const [activeTab, setActiveTab] = useState<NavKey>(
     initialNav && ALL_TAB_KEYS.includes(initialNav) ? initialNav : 'specs',
   )
