@@ -13,11 +13,9 @@ interface KnowledgePanelProps {
   /** 知识数据（「项目知识库」子 tab 取 folders/docs；记忆已拆至独立「记忆」tab） */
   knowledge: Knowledge
   onUpdateKnowledge: (k: Knowledge) => void
-  /** 飞书授权设置（「文档」子 tab OAuth 导入用） */
+  /** 飞书个人授权设置（「文档」子 tab OAuth 导入用） */
   feishu: FeishuSettings
   onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
-  /** 跳转设置页「飞书授权」分区（未配置凭证引导） */
-  onGoToFeishuSettings: () => void
 }
 
 /** 滚动到最近的可滚动祖先顶部 */
@@ -40,7 +38,7 @@ function scrollToTop(el: HTMLElement | null) {
  */
 export default function KnowledgePanel({
   documents, onUpdateDocuments, knowledge, onUpdateKnowledge,
-  feishu, onUpdateFeishu, onGoToFeishuSettings,
+  feishu, onUpdateFeishu,
 }: KnowledgePanelProps) {
   const [segment, setSegment] = useState('docs')
   const rootRef = useRef<HTMLDivElement>(null)
@@ -66,7 +64,6 @@ export default function KnowledgePanel({
             onUpdateLibrary={onUpdateDocuments}
             feishu={feishu}
             onUpdateFeishu={onUpdateFeishu}
-            onGoToFeishuSettings={onGoToFeishuSettings}
           />
         )
         : <KbIndexPanel knowledge={knowledge} onUpdateKnowledge={onUpdateKnowledge} />}

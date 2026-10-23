@@ -32,38 +32,41 @@ export interface UserSettings {
   mcpServices: string[]
   /** ADE.md 个性化内容（Markdown） */
   adeMd: string
-  /** 飞书授权（「文档」子 tab 导入用；设置页「飞书授权」分区配置） */
+  /** 飞书授权（企业授权管成员导入 / 个人授权管文档导入） */
   feishu: FeishuSettings
 }
 
-/* —— 飞书授权（文档导入 OAuth） —— */
+/* —— 飞书授权（企业授权管成员导入 · 个人授权管文档导入，两者解耦） —— */
 
-/** 飞书应用凭证 + 个人授权状态（Mock：授权状态全局共享） */
+/** 飞书应用凭证 + 个人授权状态（Mock：授权状态全局共享）
+ * - appId / appSecret = 企业授权（tenant_access_token，读取企业通讯录；「成员管理」导入成员的门槛）
+ * - authorized* = 个人授权（user_access_token，OAuth 无需凭证；项目「文档」子 tab 导入文档的门槛）
+ */
 export interface FeishuSettings {
-  /** 飞书开放平台 App ID（空 = 未配置，导入弹窗引导去设置） */
+  /** 企业授权：飞书自建应用 App ID（空 = 未连接，成员导入引导去配置） */
   appId: string
-  /** App Secret（仅本人可见，界面脱敏显示） */
+  /** 企业授权：App Secret（仅本人可见，界面脱敏显示） */
   appSecret: string
-  /** 是否已完成个人授权（user_access_token） */
+  /** 个人授权：是否已完成 OAuth 授权（user_access_token） */
   authorized: boolean
-  /** 授权账号（Mock） */
+  /** 个人授权账号（Mock） */
   authorizedAccount: string
-  /** 授权时间（Mock 文案） */
+  /** 个人授权时间（Mock 文案） */
   authorizedAt: string
 }
 
-/** 飞书凭证是否已配置（App ID + Secret 均非空） */
-export const feishuCredReady = (f: FeishuSettings): boolean =>
+/** 企业授权是否已连接（凭证已保存且非空；保存动作即连接验证，Mock 不失败） */
+export const feishuCorpConnected = (f: FeishuSettings): boolean =>
   f.appId.trim().length > 0 && f.appSecret.trim().length > 0
 
-/* —— 邀请成员（组织级） —— */
+/* —— 成员管理（组织级） —— */
 
 /** 组织成员（与项目 Member 结构对齐，去掉项目语义） */
 export interface OrgMember {
   id: string
   name: string
   initial: string
-  /** 职位：前端/后端/测试/产品… */
+  /** 职位：前端/后端/测试/产品…（导入成员 = 飞书职位） */
   role: string
   /** 组织权限：所有者 / 管理员 / 成员 */
   permission: '所有者' | '管理员' | '成员'
@@ -71,60 +74,51 @@ export interface OrgMember {
   lastActive: string
 }
 
-/** 待接受邀请 */
-export interface PendingInvite {
+/** 飞书通讯录联系人（「从飞书导入成员」弹窗数据源） */
+export interface FeishuContact {
   id: string
-  email: string
-  /** 授予权限：管理员 / 成员（所有者不可通过邀请产生） */
-  permission: '管理员' | '成员'
-  /** 发送时间（YYYY-MM-DD HH:mm） */
-  sentAt: string
-  /** 邀请人姓名 */
-  invitedBy: string
+  name: string
+  /** 部门 */
+  department: string
+  /** 职位（导入后作为组织成员 role） */
+  title: string
 }
 
-/** 邀请成员页数据（App 层 state，不持久化） */
-export interface InviteData {
-  /** 邀请链接（可重置） */
-  link: string
-  /** 链接有效期（天） */
-  linkExpireDays: number
-  /** 链接加入后默认权限 */
-  linkPermission: '管理员' | '成员'
-  /** 待接受邀请列表 */
-  pending: PendingInvite[]
+/** 飞书通讯录 Mock（与现有组织成员重叠 2 人演示「已是成员」置灰态） */
+export const FEISHU_CONTACTS: FeishuContact[] = [
+  { id: 'fc1', name: 'wang', department: '研发部', title: '后端工程师' },
+  { id: 'fc2', name: 'chen', department: '测试部', title: '测试工程师' },
+  { id: 'fc3', name: '张伟', department: '产品部', title: '产品经理' },
+  { id: 'fc4', name: '李娜', department: '研发部', title: '前端工程师' },
+  { id: 'fc5', name: '刘强', department: '研发部', title: '后端工程师' },
+  { id: 'fc6', name: '孙敏', department: '测试部', title: '测试工程师' },
+  { id: 'fc7', name: '周杰', department: '设计部', title: 'UI 设计师' },
+  { id: 'fc8', name: '吴霞', department: '运营部', title: '运营专员' },
+  { id: 'fc9', name: '郑凯', department: '研发部', title: '算法工程师' },
+  { id: 'fc10', name: '冯雪', department: '产品部', title: '产品经理' },
+  { id: 'fc11', name: '韩磊', department: '研发部', title: '架构师' },
+  { id: 'fc12', name: '唐悦', department: '测试部', title: '测试工程师' },
+]
+
+/** 组织成员页数据（App 层 state，不持久化） */
+export interface OrgMemberData {
   /** 组织成员列表 */
   orgMembers: OrgMember[]
 }
 
 /* —— 工具方法 —— */
 
-/** 邮箱格式校验（宽松规则：非空 + 单 @ + 前后各有合法段） */
-export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-}
-
-/** 解析多邮箱输入（逗号/空格/分号分隔，去空去重） */
-export function parseEmails(input: string): string[] {
-  const list = input
-    .split(/[,;\s]+/)
-    .map((e) => e.trim())
-    .filter(Boolean)
-  return Array.from(new Set(list))
-}
-
-/** 生成 Mock 邀请链接（重置时刷新） */
-export function generateInviteLink(): string {
-  const seg = () =>
-    Math.random().toString(16).slice(2, 6).padEnd(4, '0')
-  return `https://loom.aicoda.tech/join/${seg()}-${seg()}`
-}
-
-/** 当前时间格式化（YYYY-MM-DD HH:mm，用于邀请发送/重发时间） */
+/** 当前时间格式化（YYYY-MM-DD HH:mm） */
 export function nowStamp(): string {
   const p = (n: number) => String(n).padStart(2, '0')
   const d = new Date()
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** 成员姓名 → 头像字母（中文取首字、英文取首字母大写） */
+export function initialOf(name: string): string {
+  const ch = name.trim().charAt(0)
+  return /[a-z]/.test(ch) ? ch.toUpperCase() : ch
 }
 
 /** 成员头像底色（复用项目成员配色池） */
@@ -184,39 +178,9 @@ export function createDefaultUserSettings(): UserSettings {
   }
 }
 
-/** 飞书 OAuth 授权 Mock：800ms 授权中后写回已授权态 */
-export function feishuAuthorized(account: string): FeishuSettings {
+/** 邀请（链接/邮箱）已整体删除，改「从飞书导入成员」；组织成员数据初值 */
+export function createDefaultOrgMemberData(): OrgMemberData {
   return {
-    appId: '',
-    appSecret: '',
-    authorized: true,
-    authorizedAccount: account,
-    authorizedAt: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '-'),
-  }
-}
-
-/** 邀请成员页初值 */
-export function createDefaultInviteData(): InviteData {
-  return {
-    link: generateInviteLink(),
-    linkExpireDays: 7,
-    linkPermission: '成员',
-    pending: [
-      {
-        id: 'inv1',
-        email: 'wang.qi@aicoda.tech',
-        permission: '成员',
-        sentAt: '2026-10-21 14:30',
-        invitedBy: CURRENT_USER.name,
-      },
-      {
-        id: 'inv2',
-        email: 'chen.yu@aicoda.tech',
-        permission: '管理员',
-        sentAt: '2026-10-22 09:12',
-        invitedBy: CURRENT_USER.name,
-      },
-    ],
     orgMembers: [
       { id: 'om1', name: 'shilu', initial: 'S', role: '平台', permission: '所有者', online: true, lastActive: '活跃于 10 分钟前' },
       { id: 'om2', name: 'luyu', initial: 'L', role: '前端', permission: '管理员', online: false, lastActive: '活跃于 1 小时前' },

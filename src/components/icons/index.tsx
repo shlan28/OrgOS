@@ -488,3 +488,26 @@ export const LinkIcon = (p: IconProps) =>
       <path d="M13.5 10.5a3.5 3.5 0 0 0-5 0l-3 3a3.5 3.5 0 0 0 5 5l1.2-1.2" />
     </>
   ))
+
+/** 企业（企业授权 tab：写字楼） */
+export const BuildingIcon = (p: IconProps) =>
+  base(p, (
+    <>
+      <rect x="4.5" y="3.5" width="9" height="17" rx="1.5" />
+      <path d="M13.5 9.5h6v11h-15" />
+      <path d="M16.5 12.5h1.5M16.5 15.5h1.5M16.5 18.5h1.5" />
+      <line x1="7.5" y1="7" x2="10.5" y2="7" />
+      <line x1="7.5" y1="10.5" x2="10.5" y2="10.5" />
+      <line x1="7.5" y1="14" x2="10.5" y2="14" />
+      <line x1="7.5" y1="17.5" x2="10.5" y2="17.5" />
+    </>
+  ))
+
+/** 个人（个人授权 tab：单人胸像） */
+export const PersonIcon = (p: IconProps) =>
+  base(p, (
+    <>
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M5 20.5c.6-4 3.4-6 7-6s6.4 2 7 6" />
+    </>
+  ))

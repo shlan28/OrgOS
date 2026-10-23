@@ -73,12 +73,10 @@ interface ProjectDetailProps {
   initialNav?: NavKey
   /** 通知跳转定位的任务 id（切到对应会话） */
   focusJobId?: string | null
-  /** 飞书授权设置（「文档」子 tab OAuth 导入用） */
+  /** 飞书个人授权设置（「文档」子 tab OAuth 导入用） */
   feishu: FeishuSettings
   /** 授权状态写回（Mock 全局共享） */
   onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
-  /** 跳转设置页「飞书授权」分区（未配置凭证引导） */
-  onGoToFeishuSettings: () => void
 }
 
 /** 四格列宽比例（flex-grow 权重）：10% / 20% / 35% / 35%——格 3 Agent CLI 与格 4 工作流占大头
@@ -96,7 +94,7 @@ const COLUMN_SPECS = [
  */
 export default function ProjectDetail({
   project, projects, folders, onUpdateProject, engine, initialNav, focusJobId,
-  feishu, onUpdateFeishu, onGoToFeishuSettings,
+  feishu, onUpdateFeishu,
 }: ProjectDetailProps) {
   // —— 当前会话（格 1/2/3 共享；默认 order 最大，无会话 null） ——
   const [activeSessionId, setActiveSessionId] = useState<string | null>(
@@ -366,7 +364,6 @@ export default function ProjectDetail({
             onUpdateKnowledge={(knowledge) => onUpdateProject(project.id, (p) => ({ ...p, knowledge }))}
             feishu={feishu}
             onUpdateFeishu={onUpdateFeishu}
-            onGoToFeishuSettings={onGoToFeishuSettings}
           />
         )
       case 'memory':

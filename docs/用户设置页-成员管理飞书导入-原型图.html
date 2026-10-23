@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>用户设置页 · 成员管理（从飞书导入成员）原型图 — loom-org-os</title>
+<style>
+  :root {
+    --sidebar-bg: #f5f5f7;
+    --main-bg: #ffffff;
+    --border: #e5e5e5;
+    --row-divider: #f0f0f0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #888888;
+    --text-icon: #5f5f5f;
+    --accent-green: #2e8b47;
+    --status-success: #2e8b47;
+    --status-success-bg: #e8f2ea;
+    --status-info: #3b78c9;
+    --status-info-bg: #e9f0f9;
+    --status-warning: #b25e09;
+    --status-warning-bg: #f7efe4;
+    --status-danger: #d64545;
+    --status-danger-bg: #faeaea;
+    --status-neutral: #9a9a9a;
+    --status-neutral-bg: #f0f0f2;
+    --feishu: #3370ff;
+    --feishu-bg: #eef2ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'PingFang SC',
+      'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--text-primary);
+    background: linear-gradient(135deg, #d8dee8 0%, #c3ccd9 50%, #b8c2d2 100%);
+    padding: 40px 24px 96px;
+  }
+  .doc { max-width: 1320px; margin: 0 auto; }
+  .doc-head { text-align: center; margin-bottom: 26px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-head h1 { font-size: 26px; margin-bottom: 8px; }
+  .doc-head p { font-size: 13px; opacity: .85; }
+  .doc-notes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 30px; }
+  .doc-notes span {
+    font-size: 12px; background: rgba(255,255,255,.85); border-radius: 999px;
+    padding: 4px 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .doc-notes span b { color: var(--accent-green); }
+  .win-cap { display: flex; align-items: baseline; gap: 12px; margin: 46px 0 14px; }
+  .win-cap .tag {
+    font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--accent-green); border-radius: 6px; padding: 3px 9px; flex-shrink: 0;
+  }
+  .win-cap h2 { font-size: 16px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .win-cap .sub { font-size: 12.5px; color: #fff; opacity: .85; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+
+  /* ===== 模拟窗口 ===== */
+  .win {
+    background: var(--main-bg); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.08);
+  }
+  .win-titlebar {
+    height: 38px; background: var(--sidebar-bg); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; padding: 0 14px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .win-titlebar .name { margin: 0 auto; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .win-titlebar .tb-icon { margin-left: auto; font-size: 14px; color: var(--text-secondary); }
+  .win-body { display: flex; height: 780px; }
+
+  /* ===== 侧边栏 ===== */
+  .sidebar {
+    width: 258px; flex-shrink: 0; background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .sidebar-top { padding: 12px 12px 0; flex: 1; }
+  .seg { display: flex; background: rgba(0,0,0,.05); border-radius: 8px; padding: 2px; }
+  .seg button {
+    flex: 1; border: none; background: transparent; font-family: inherit; font-size: 12.5px;
+    color: var(--text-secondary); height: 26px; border-radius: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .seg button.on { background: #fff; color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .s-menu { margin-top: 14px; display: flex; flex-direction: column; gap: 2px; }
+  .s-item { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 7px; font-size: 13.5px; color: var(--text-primary); }
+  .s-item .ic { font-size: 13px; color: var(--text-icon); }
+  .s-sec { margin-top: 22px; }
+  .s-sec .t { font-size: 11.5px; color: #9a9a9a; padding: 0 8px; margin-bottom: 4px; }
+  .sidebar-user { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+  .avatar {
+    width: 24px; height: 24px; border-radius: 50%; background: #e3e8f0; color: #5b7ba6;
+    font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .username { font-size: 13px; color: var(--text-primary); }
+  .chev { margin-left: auto; font-size: 11px; color: var(--text-secondary); }
+
+  /* ===== 主区 / 设置页 ===== */
+  .main { flex: 1; min-width: 0; background: var(--main-bg); display: flex; flex-direction: column; overflow: hidden; }
+  .page { flex: 1; min-height: 0; overflow-y: auto; position: relative; }
+  .settings-page-head { width: min(1040px, 100%); margin: 0 auto; padding: 34px 32px 0; }
+  .settings-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .page-title { font-size: 29px; font-weight: 700; letter-spacing: .3px; }
+  .page-subtitle { font-size: 12.5px; color: var(--text-secondary); margin-top: 6px; }
+  .settings-close { border: none; background: transparent; width: 30px; height: 30px;
+    border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-secondary); cursor: pointer; font-size: 15px; line-height: 1; margin-top: 2px; }
+  .settings-close:hover { background: rgba(0,0,0,.05); color: var(--text-primary); }
+  .settings-page { width: min(1040px, 100%); margin: 0 auto; padding: 8px 32px 48px;
+    display: flex; gap: 28px; align-items: flex-start; }
+  .settings-nav { width: 196px; flex-shrink: 0; position: sticky; top: 0; padding-top: 12px; }
+  .settings-nav .grp { font-size: 11.5px; color: #9a9a9a; margin: 0 0 6px 4px; }
+  .settings-nav-item {
+    display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px;
+    border: none; background: transparent; border-radius: 7px; font-family: inherit;
+    font-size: 13.5px; color: var(--text-primary); cursor: pointer; text-align: left;
+  }
+  .settings-nav-item .ic { font-size: 14px; color: var(--text-icon); }
+  .settings-nav-item:hover { background: rgba(0,0,0,.055); }
+  .settings-nav-item.on { background: rgba(0,0,0,.07); font-weight: 600; }
+  .settings-content { flex: 1; min-width: 0; }
+
+  /* Settings 式分组 */
+  .section-label-row { display: flex; align-items: center; justify-content: space-between; }
+  .section-label { font-size: 11.5px; color: #9a9a9a; margin: 20px 0 6px 4px; }
+  .section-label-row:first-child .section-label { margin-top: 0; }
+  .section-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 46px; padding: 8px 16px;
+  }
+  .settings-row + .settings-row { border-top: 1px solid var(--row-divider); }
+  .settings-row-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .settings-row-text { display: flex; flex-direction: column; min-width: 0; }
+  .settings-row-title { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-flex; align-items: center; gap: 6px; }
+  .settings-row-sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .settings-row-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-size: 13.5px; color: var(--text-secondary); }
+
+  .text-btn { border: none; background: transparent; font-size: 12px; font-family: inherit;
+    color: var(--text-secondary); cursor: pointer; padding: 3px 8px; border-radius: 6px; }
+  .text-btn:hover { background: rgba(0,0,0,.04); color: var(--text-primary); }
+  .text-btn.danger { color: var(--status-danger); }
+  .text-btn.danger:disabled { color: #c2c2c6; cursor: not-allowed; }
+  .btn-primary { border: none; background: var(--text-primary); color: #fff; font-size: 13px;
+    font-family: inherit; height: 30px; padding: 0 16px; border-radius: 7px; cursor: pointer; }
+  .btn-primary:disabled { background: #d8d8dc; cursor: not-allowed; }
+  .field-input, .field-select {
+    height: 32px; border: 1px solid var(--border); border-radius: 8px; padding: 0 10px;
+    font-size: 13px; font-family: inherit; color: var(--text-primary); background: #fff; outline: none;
+  }
+  .field-select { width: 110px; }
+  .mono { font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; }
+  .badge { font-size: 11px; border-radius: 6px; padding: 1.5px 7px; background: var(--status-neutral-bg); color: #6b6b6b; }
+  .badge.ok { background: var(--status-success-bg); color: var(--status-success); }
+  .badge.info { background: var(--status-info-bg); color: var(--status-info); }
+  .mini-avatar { width: 26px; height: 26px; border-radius: 50%; color: #fff; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .online-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-success); display: inline-block; }
+  .me-tag { font-size: 10px; border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; color: var(--text-secondary); }
+  .perm-note { font-size: 12px; color: var(--text-secondary); padding: 10px 16px 12px; line-height: 1.7; border-top: 1px solid var(--row-divider); }
+  .perm-note b { color: var(--text-primary); font-weight: 600; }
+
+  /* —— 飞书授权区：企业/个人两子 tab（SegmentedControl） —— */
+  .fs-seg { padding: 12px 16px 4px; }
+  .fs-seg .seg2 { display: flex; background: rgba(0,0,0,.05); border-radius: 8px; padding: 2px; width: 260px; }
+  .fs-seg .seg2 button { flex: 1; border: none; background: transparent; font-family: inherit; font-size: 12.5px;
+    color: var(--text-secondary); height: 26px; border-radius: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+  .fs-seg .seg2 button.on { background: #fff; color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+
+  .fs-field-row { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 8px 16px; }
+  .fs-field-row + .fs-field-row { border-top: 1px solid var(--row-divider); }
+  .fs-field-icon { width: 26px; height: 26px; border-radius: 7px; background: var(--status-neutral-bg); color: var(--text-icon);
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .fs-field-label { font-size: 13.5px; color: var(--text-primary); flex-shrink: 0; width: 82px; }
+  .fs-field-input { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 8px;
+    padding: 0 10px; font-family: 'SF Mono', Menlo, Consolas, monospace; font-size: 12px;
+    color: var(--text-primary); background: var(--main-bg); outline: none; height: 32px; }
+  .fs-field-input.secret { display: flex; align-items: center; gap: 4px; padding: 0 4px 0 10px; }
+  .fs-field-input.secret input { flex: 1; min-width: 0; border: none; outline: none;
+    font-family: inherit; font-size: 12px; color: var(--text-primary); background: transparent; height: 100%; }
+  .fs-eye-btn { border: none; background: transparent; color: var(--text-secondary); cursor: pointer;
+    font-size: 11.5px; font-family: inherit; padding: 4px 8px; border-radius: 6px; flex-shrink: 0; }
+  .fs-eye-btn:hover { background: rgba(0,0,0,.06); color: var(--text-primary); }
+  .fs-cred-actions-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--row-divider); }
+  .fs-cred-actions { display: inline-flex; align-items: center; gap: 10px; }
+  .fs-cred-sub { font-size: 12px; color: var(--text-secondary); }
+  .fs-row-icon { width: 26px; height: 26px; border-radius: 7px; background: #eef2ff; color: #3370ff;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+
+  /* —— 从飞书导入成员区 —— */
+  .import-guide-row { display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 8px 16px; }
+  .import-guide-main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .import-guide-icon { width: 26px; height: 26px; border-radius: 7px; background: var(--feishu-bg); color: var(--feishu);
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .import-guide-icon.warn { background: var(--status-warning-bg); color: var(--status-warning); }
+  .import-guide-text { display: flex; flex-direction: column; min-width: 0; }
+  .import-guide-title { font-size: 13.5px; }
+  .import-guide-sub { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+  .fs-import-btn { border: 1px solid var(--feishu); background: var(--feishu-bg); color: var(--feishu);
+    border-radius: 7px; padding: 4px 12px; font-size: 12.5px; font-family: inherit; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; flex-shrink: 0; }
+  .fs-import-btn:hover { background: #e2e9ff; }
+  .fs-import-btn:disabled { border-color: #d8d8dc; background: #f5f5f7; color: #b0b0b0; cursor: not-allowed; }
+  .dot-ok { width: 7px; height: 7px; border-radius: 50%; background: var(--status-success); display: inline-block; flex-shrink: 0; }
+
+  /* ===== 导入弹窗（单步：企业应用已连接 → 直接选成员） ===== */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.25); display: none;
+    align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { width: 560px; max-width: calc(100vw - 48px); max-height: calc(100vh - 96px);
+    background: #fff; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.18);
+    padding: 18px 20px 16px; display: flex; flex-direction: column; }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .modal-title { font-size: 15px; font-weight: 700; }
+  .modal-close { border: none; background: transparent; width: 24px; height: 24px; border-radius: 6px;
+    font-size: 16px; line-height: 1; color: var(--text-secondary); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; }
+  .modal-close:hover { background: rgba(0,0,0,.05); color: var(--text-primary); }
+
+  /* 企业应用已连接状态条（替代原授权步骤卡） */
+  .conn-bar { display: flex; align-items: center; gap: 8px;
+    border: 1px solid #bfe0c8; background: var(--status-success-bg); border-radius: 9px;
+    padding: 8px 12px; font-size: 11.5px; color: var(--status-success); margin-bottom: 12px; }
+  .conn-bar .mono { color: var(--status-success); }
+  .conn-bar .cb-sub { margin-left: auto; font-size: 11px; color: #7ba98a; flex-shrink: 0; }
+
+  /* 成员多选列表（fs-list 体系） */
+  .fs-list-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    display: flex; flex-direction: column; max-height: 320px; }
+  .fs-list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 7px 12px; border-bottom: 1px solid var(--border); background: #fbfbfc;
+    font-size: 11.5px; color: var(--text-secondary); flex-shrink: 0; }
+  .fs-list-head .lk { color: var(--feishu); cursor: pointer; }
+  .fs-list { flex: 1; overflow: auto; padding: 6px; }
+  .fs-item { display: flex; align-items: center; gap: 8px; border-radius: 8px; padding: 6px 8px; }
+  .fs-item.sel { background: var(--feishu-bg); }
+  .fs-item.disabled { opacity: .55; }
+  .fs-check { border: 1.5px solid #c2c5ca; background: #fff; width: 16px; height: 16px; border-radius: 5px;
+    font-size: 10.5px; line-height: 1; color: #fff; cursor: pointer; display: inline-flex;
+    align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit;
+    transition: background .12s, border-color .12s; }
+  .fs-check:hover { border-color: var(--feishu); }
+  .fs-check.on { background: var(--feishu); border-color: var(--feishu); }
+  .fs-item.disabled .fs-check { cursor: not-allowed; }
+  .fs-item .f-avatar { width: 24px; height: 24px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .fs-item .f-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .fs-item .f-name { font-size: 12px; font-weight: 600; }
+  .fs-item .f-sub { font-size: 10.5px; color: var(--text-secondary); }
+  .fs-item .f-tag { font-size: 10px; background: var(--status-neutral-bg); color: #6b6b6b;
+    border-radius: 5px; padding: 1px 7px; flex-shrink: 0; white-space: nowrap; }
+
+  /* 弹窗底部：权限下拉 + 已选计数 + 操作 */
+  .import-foot { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .import-foot .foot-label { font-size: 12px; color: var(--text-secondary); flex-shrink: 0; }
+  .import-foot .count { margin-left: auto; font-size: 11.5px; color: var(--text-secondary); flex-shrink: 0; }
+  .import-foot .count b { color: var(--feishu); }
+  .modal-actions { display: inline-flex; gap: 10px; flex-shrink: 0; }
+
+  /* 演示控制 */
+  .proto-ctrl { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 200;
+    display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .proto-btn { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 6px 14px;
+    font-size: 12px; font-family: inherit; color: var(--text-primary); cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,.10); }
+  .proto-btn:hover { border-color: var(--text-secondary); }
+  .proto-btn.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+
+  .anno { color: #fff; font-size: 12.5px; opacity: .9; margin: 10px 2px 0; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .doc-foot { text-align: center; color: rgba(255,255,255,.85); font-size: 12px; margin-top: 22px; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <h1>设置页 · 成员管理（从飞书导入成员）原型图</h1>
+    <p>loom-org-os · 企业授权 / 个人授权两子 tab · 企业凭证就绪即可导入 · 组织成员</p>
+  </div>
+  <div class="doc-notes">
+    <span>左导航 <b>3 → 2 项</b>：Agent 设置 / 成员管理（飞书授权并入）</span>
+    <span>飞书授权两子 tab：<b>企业授权</b>（凭证·tenant·通讯录）/ <b>个人授权</b>（OAuth·user·云文档，无需凭证）</span>
+    <span>成员导入门槛 = <b>企业凭证已保存</b>（弹窗单步直接选成员）</span>
+    <span>邀请链接 / 邮箱 / 待接受 <b>整体删除</b></span>
+  </div>
+
+  <!-- ========== 图 1：设置页 · 成员管理（企业授权 tab · 已连接态） ========== -->
+  <div class="win-cap">
+    <span class="tag">图 1</span>
+    <h2>设置页 · 成员管理：飞书授权 = 企业授权 / 个人授权两子 tab</h2>
+    <span class="sub">图 1 展示「企业授权」tab（凭证表单 + 连接状态）；「个人授权」tab 见图 2</span>
+  </div>
+  <div class="win">
+    <div class="win-titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">Loom</span>
+      <span class="tb-icon">🔔</span>
+    </div>
+    <div class="win-body">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="seg"><button class="on">🏠 Home</button><button>⌨ Code</button></div>
+          <div class="s-menu">
+            <div class="s-item"><span class="ic">✏️</span><span>新对话</span></div>
+            <div class="s-item"><span class="ic">🎚</span><span>定制</span></div>
+            <div class="s-item"><span class="ic">🗂</span><span>项目中心</span></div>
+          </div>
+          <div class="s-sec">
+            <div class="t">项目</div>
+            <div class="s-item"><span class="ic">📁</span><span>loomweb</span></div>
+          </div>
+        </div>
+        <div class="sidebar-user">
+          <span class="avatar">S</span>
+          <span class="username">shilu</span>
+          <span class="chev">⌃</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="page">
+          <div class="settings-page-head">
+            <div class="settings-head-row">
+              <div>
+                <div class="page-title">设置</div>
+                <div class="page-subtitle">管理你的 Agent 默认配置与组织成员</div>
+              </div>
+              <button class="settings-close" title="关闭设置">✕</button>
+            </div>
+          </div>
+
+          <div class="settings-page">
+            <nav class="settings-nav">
+              <div class="grp">设置</div>
+              <button class="settings-nav-item"><span class="ic">🤖</span><span>Agent 设置</span></button>
+              <button class="settings-nav-item on"><span class="ic">👥</span><span>成员管理</span></button>
+            </nav>
+
+            <div class="settings-content">
+              <!-- ① 飞书授权：企业授权 / 个人授权 两子 tab -->
+              <div class="section-label-row">
+                <div class="section-label">飞书授权</div>
+                <div style="font-size:11.5px;color:#b0b0b0;margin-right:4px">企业授权管成员导入 · 个人授权管文档导入</div>
+              </div>
+              <div class="section-card">
+                <div class="fs-seg">
+                  <div class="seg2" id="fsSeg">
+                    <button class="on" id="tabCorp" type="button" onclick="switchTab('corp')">🏢 企业授权</button>
+                    <button id="tabUser" type="button" onclick="switchTab('user')">👤 个人授权</button>
+                  </div>
+                </div>
+
+                <!-- 企业授权 tab 内容 -->
+                <div id="corpPane">
+                  <div class="fs-field-row">
+                    <span class="fs-field-icon">⚙</span>
+                    <span class="fs-field-label">App ID</span>
+                    <input class="fs-field-input" value="cli_a3f8e09b2c61" spellcheck="false">
+                  </div>
+                  <div class="fs-field-row">
+                    <span class="fs-field-icon">⚙</span>
+                    <span class="fs-field-label">App Secret</span>
+                    <span class="fs-field-input secret">
+                      <input type="password" value="••••••••••••••••••" spellcheck="false">
+                      <button class="fs-eye-btn">显示</button>
+                    </span>
+                  </div>
+                  <div class="fs-cred-actions-row">
+                    <span class="fs-cred-sub">企业应用凭证用于读取通讯录（tenant_access_token），导入成员需要</span>
+                    <span class="fs-cred-actions">
+                      <button class="text-btn">清除</button>
+                      <button class="btn-primary" disabled title="无修改时不可点">保存</button>
+                    </span>
+                  </div>
+                  <!-- 状态行：已连接 -->
+                  <div class="settings-row" id="corpStatusRow" style="border-top:1px solid var(--row-divider)">
+                    <div class="settings-row-main">
+                      <span class="fs-row-icon">飞</span>
+                      <span class="settings-row-text">
+                        <span class="settings-row-title">
+                          企业应用连接
+                          <span class="badge ok" id="corpBadge">已连接</span>
+                        </span>
+                        <span class="settings-row-sub" id="corpSub">可读取企业通讯录 · cli_a3f8…2c61</span>
+                      </span>
+                    </div>
+                    <div class="settings-row-right">
+                      <span class="dot-ok"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 个人授权 tab 内容（默认隐藏；见图 2 静态展示） -->
+                <div id="userPane" style="display:none">
+                  <div class="settings-row">
+                    <div class="settings-row-main">
+                      <span class="fs-row-icon">飞</span>
+                      <span class="settings-row-text">
+                        <span class="settings-row-title">
+                          飞书个人授权
+                          <span class="badge" id="userBadge">未授权</span>
+                        </span>
+                        <span class="settings-row-sub" id="userSub">个人身份授权（user_access_token）用于项目「文档」导入，无需配置应用凭证</span>
+                      </span>
+                    </div>
+                    <div class="settings-row-right">
+                      <button class="text-btn" id="userOpBtn" onclick="doUserAuth()">去授权</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ② 从飞书导入成员（门槛 = 企业授权已连接） -->
+              <div class="section-label">从飞书导入成员</div>
+              <div class="section-card">
+                <div class="import-guide-row">
+                  <div class="import-guide-main">
+                    <span class="import-guide-icon" id="impIcon">⇩</span>
+                    <span class="import-guide-text">
+                      <span class="import-guide-title" id="impTitle">企业应用已连接，可导入通讯录成员</span>
+                      <span class="import-guide-sub" id="impSub">从飞书通讯录选择联系人批量导入组织，导入后可在下方组织成员中管理</span>
+                    </span>
+                    <span class="dot-ok" id="impDot"></span>
+                  </div>
+                  <button class="fs-import-btn" id="impBtn" type="button" onclick="openImport()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    从飞书导入成员
+                  </button>
+                </div>
+              </div>
+
+              <!-- ③ 组织成员 -->
+              <div class="section-label-row">
+                <div class="section-label">组织成员（<span id="memberCount">5</span>）</div>
+              </div>
+              <div class="section-card" id="memberList">
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#5b7ba6">S</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">shilu <span class="me-tag">我</span></span>
+                      <span class="settings-row-sub">平台 · 所有者 · 活跃于 10 分钟前</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="online-dot"></span>
+                    <span class="badge">所有者</span>
+                    <button class="text-btn danger" disabled title="唯一所有者不可移除">移除</button>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#3f8f5f">L</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">luyu</span>
+                      <span class="settings-row-sub">前端 · 管理员 · 活跃于 1 小时前</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="badge info">管理员</span>
+                    <button class="text-btn danger">移除</button>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#c2752a">W</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">wang</span>
+                      <span class="settings-row-sub">后端 · 成员 · 活跃于 30 分钟前</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="online-dot"></span>
+                    <span class="badge">成员</span>
+                    <button class="text-btn danger">移除</button>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#8a6fbf">C</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">chen</span>
+                      <span class="settings-row-sub">测试 · 成员 · 活跃于 昨天</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="badge">成员</span>
+                    <button class="text-btn danger">移除</button>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#4a90a4">Z</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">zhao</span>
+                      <span class="settings-row-sub">产品 · 成员 · 活跃于 3 天前</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="badge">成员</span>
+                    <button class="text-btn danger">移除</button>
+                  </div>
+                </div>
+                <p class="perm-note">
+                  <b>所有者</b>：拥有全部权限，可管理成员与组织配置（唯一所有者不可移除）；<b>管理员</b>：可导入与管理成员；<b>成员</b>：可使用项目与 Agent 能力。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <p class="anno">↑ 飞书授权分组内 SegmentedControl 切「企业授权 / 个人授权」；企业授权 = 凭证表单（保存 = 已连接）+ 状态行；换凭证保存自动重连且不影响个人授权</p>
+
+  <!-- ========== 图 2：个人授权 tab（纯 OAuth 无凭证） ========== -->
+  <div class="win-cap">
+    <span class="tag">图 2</span>
+    <h2>「个人授权」tab：纯 OAuth，不需要填 App ID / Secret</h2>
+    <span class="sub">未授权 = [去授权]（800ms OAuth）→ 已授权 = 账号 + 时间 + [取消授权]；用于项目「文档」导入</span>
+  </div>
+  <div class="win">
+    <div class="win-titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">Loom</span>
+      <span class="tb-icon">🔔</span>
+    </div>
+    <div class="win-body">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="seg"><button class="on">🏠 Home</button><button>⌨ Code</button></div>
+          <div class="s-menu">
+            <div class="s-item"><span class="ic">✏️</span><span>新对话</span></div>
+            <div class="s-item"><span class="ic">🎚</span><span>定制</span></div>
+            <div class="s-item"><span class="ic">🗂</span><span>项目中心</span></div>
+          </div>
+        </div>
+        <div class="sidebar-user">
+          <span class="avatar">S</span>
+          <span class="username">shilu</span>
+          <span class="chev">⌃</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="page">
+          <div class="settings-page-head">
+            <div class="settings-head-row">
+              <div>
+                <div class="page-title">设置</div>
+                <div class="page-subtitle">管理你的 Agent 默认配置与组织成员</div>
+              </div>
+              <button class="settings-close" title="关闭设置">✕</button>
+            </div>
+          </div>
+
+          <div class="settings-page">
+            <nav class="settings-nav">
+              <div class="grp">设置</div>
+              <button class="settings-nav-item"><span class="ic">🤖</span><span>Agent 设置</span></button>
+              <button class="settings-nav-item on"><span class="ic">👥</span><span>成员管理</span></button>
+            </nav>
+
+            <div class="settings-content">
+              <div class="section-label-row">
+                <div class="section-label">飞书授权</div>
+                <div style="font-size:11.5px;color:#b0b0b0;margin-right:4px">企业授权管成员导入 · 个人授权管文档导入</div>
+              </div>
+              <div class="section-card">
+                <div class="fs-seg">
+                  <div class="seg2">
+                    <button type="button">🏢 企业授权</button>
+                    <button class="on" type="button">👤 个人授权</button>
+                  </div>
+                </div>
+
+                <!-- 个人授权 tab：授权状态行（无凭证表单） -->
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="fs-row-icon">飞</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">
+                        飞书个人授权
+                        <span class="badge ok">已授权</span>
+                      </span>
+                      <span class="settings-row-sub">shilu · 授权于 10-23 14:20 · 个人身份授权（user_access_token）用于项目「文档」导入</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <button class="text-btn danger">取消授权</button>
+                  </div>
+                </div>
+                <p style="font-size:11.5px;color:#b0b0b0;padding:2px 16px 12px;line-height:1.6">
+                  个人授权采用 OAuth 登录飞书账号授权，无需配置应用凭证；与「企业授权」互不影响。
+                </p>
+              </div>
+
+              <!-- 从飞书导入成员：门槛只看企业授权（此处已连接，与图 1 一致） -->
+              <div class="section-label">从飞书导入成员</div>
+              <div class="section-card">
+                <div class="import-guide-row">
+                  <div class="import-guide-main">
+                    <span class="import-guide-icon">⇩</span>
+                    <span class="import-guide-text">
+                      <span class="import-guide-title">企业应用已连接，可导入通讯录成员</span>
+                      <span class="import-guide-sub">与个人授权状态无关——成员导入只依赖企业授权</span>
+                    </span>
+                    <span class="dot-ok"></span>
+                  </div>
+                  <button class="fs-import-btn" type="button">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    从飞书导入成员
+                  </button>
+                </div>
+              </div>
+
+              <!-- 组织成员（示意） -->
+              <div class="section-label">组织成员（5）</div>
+              <div class="section-card">
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#5b7ba6">S</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">shilu <span class="me-tag">我</span></span>
+                      <span class="settings-row-sub">平台 · 所有者 · 活跃于 10 分钟前</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="online-dot"></span>
+                    <span class="badge">所有者</span>
+                    <button class="text-btn danger" disabled title="唯一所有者不可移除">移除</button>
+                  </div>
+                </div>
+                <div class="settings-row" style="justify-content:center;color:#b0b0b0;font-size:11.5px;min-height:34px">
+                  … luyu / wang / chen / zhao（同图 1）
+                </div>
+                <p class="perm-note">
+                  <b>所有者</b>：拥有全部权限，可管理成员与组织配置（唯一所有者不可移除）；<b>管理员</b>：可导入与管理成员；<b>成员</b>：可使用项目与 Agent 能力。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <p class="anno">↑ 个人授权 tab 无任何凭证输入——只有一条授权状态行；副文案明确「用于项目文档导入，无需配置应用凭证」；导入成员区不受个人授权影响</p>
+
+  <!-- ========== 图 3：导入弹窗（单步：企业应用已连接 → 直接选成员） ========== -->
+  <div class="win-cap">
+    <span class="tag">图 3</span>
+    <h2>导入弹窗：企业凭证就绪即打开，单步选成员</h2>
+    <span class="sub">顶部连接状态条（绿）→ 通讯录多选（已是成员置灰）→ 底部权限下拉 → 导入 1s 顶插入</span>
+  </div>
+  <div class="win" style="position:relative">
+    <div class="win-titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">Loom</span>
+      <span class="tb-icon">🔔</span>
+    </div>
+    <!-- 弹窗本体（演示直接铺开，背景为面板模糊示意） -->
+    <div style="background:linear-gradient(135deg,#e9edf3,#dfe5ee);padding:40px 0;display:flex;justify-content:center;">
+      <div class="modal-box" style="position:relative">
+        <div class="modal-head">
+          <span class="modal-title">从飞书导入成员</span>
+          <button class="modal-close">×</button>
+        </div>
+
+        <!-- 企业应用已连接状态条（替代原授权步骤卡） -->
+        <div class="conn-bar">
+          <span class="badge ok" style="flex-shrink:0">已连接</span>
+          <span>企业应用 <span class="mono">cli_a3f8…2c61</span> · 权限：读取通讯录</span>
+          <span class="cb-sub">tenant_access_token</span>
+        </div>
+
+        <!-- 成员多选列表 -->
+        <div class="fs-list-wrap">
+          <div class="fs-list-head">
+            <span>飞书通讯录 · 共 12 人</span>
+            <span class="lk" onclick="toggleAllStatic(this)">全选新人</span>
+          </div>
+          <div class="fs-list" id="fsListStatic">
+            <!-- 已是成员：置灰不可选 -->
+            <div class="fs-item disabled" title="已是组织成员">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#c2752a">W</span>
+              <span class="f-main"><span class="f-name">wang</span><span class="f-sub">研发部 · 后端工程师</span></span>
+              <span class="f-tag">已是成员</span>
+            </div>
+            <div class="fs-item disabled" title="已是组织成员">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#8a6fbf">C</span>
+              <span class="f-main"><span class="f-name">chen</span><span class="f-sub">测试部 · 测试工程师</span></span>
+              <span class="f-tag">已是成员</span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check on">✓</span>
+              <span class="f-avatar" style="background:#3f8f5f">张</span>
+              <span class="f-main"><span class="f-name">张伟</span><span class="f-sub">产品部 · 产品经理</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check on">✓</span>
+              <span class="f-avatar" style="background:#5b7ba6">李</span>
+              <span class="f-main"><span class="f-name">李娜</span><span class="f-sub">研发部 · 前端工程师</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#4a90a4">刘</span>
+              <span class="f-main"><span class="f-name">刘强</span><span class="f-sub">研发部 · 后端工程师</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#b05757">孙</span>
+              <span class="f-main"><span class="f-name">孙敏</span><span class="f-sub">测试部 · 测试工程师</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#c2752a">周</span>
+              <span class="f-main"><span class="f-name">周杰</span><span class="f-sub">设计部 · UI 设计师</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#8a6fbf">吴</span>
+              <span class="f-main"><span class="f-name">吴霞</span><span class="f-sub">运营部 · 运营专员</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#7c66d8">郑</span>
+              <span class="f-main"><span class="f-name">郑凯</span><span class="f-sub">研发部 · 算法工程师</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#4a90a4">冯</span>
+              <span class="f-main"><span class="f-name">冯雪</span><span class="f-sub">产品部 · 产品经理</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#3f8f5f">韩</span>
+              <span class="f-main"><span class="f-name">韩磊</span><span class="f-sub">研发部 · 架构师</span></span>
+            </div>
+            <div class="fs-item" onclick="togglePickStatic(this)">
+              <span class="fs-check"></span>
+              <span class="f-avatar" style="background:#b05757">唐</span>
+              <span class="f-main"><span class="f-name">唐悦</span><span class="f-sub">测试部 · 测试工程师</span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 底部：权限 + 计数 + 操作 -->
+        <div class="import-foot">
+          <span class="foot-label">导入后权限</span>
+          <select class="field-select">
+            <option>成员</option>
+            <option>管理员</option>
+          </select>
+          <span class="count">已选 <b id="pickCountStatic">2</b> 人（已是成员不可选）</span>
+          <span class="modal-actions">
+            <button class="text-btn">取消</button>
+            <button class="btn-primary" id="importBtnStatic">导入所选（2 人）</button>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="anno">↑ 无授权步骤——企业授权已在面板完成，弹窗打开即通讯录；顶部绿色连接状态条 + App ID 脱敏 + 权限说明；wang / chen 置灰「已是成员」；导入 1s 后顶插入组织成员</p>
+
+  <!-- ========== 图 4：未连接态（企业凭证未保存） ========== -->
+  <div class="win-cap">
+    <span class="tag">图 4</span>
+    <h2>未连接态：企业凭证未保存 → 导入按钮禁用</h2>
+    <span class="sub">引导行提示去完成企业授权；个人授权状态不影响成员导入</span>
+  </div>
+  <div class="win">
+    <div class="win-titlebar">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">Loom</span>
+      <span class="tb-icon">🔔</span>
+    </div>
+    <div class="win-body">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="seg"><button class="on">🏠 Home</button><button>⌨ Code</button></div>
+          <div class="s-menu">
+            <div class="s-item"><span class="ic">✏️</span><span>新对话</span></div>
+            <div class="s-item"><span class="ic">🎚</span><span>定制</span></div>
+            <div class="s-item"><span class="ic">🗂</span><span>项目中心</span></div>
+          </div>
+        </div>
+        <div class="sidebar-user">
+          <span class="avatar">S</span>
+          <span class="username">shilu</span>
+          <span class="chev">⌃</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="page">
+          <div class="settings-page-head">
+            <div class="settings-head-row">
+              <div>
+                <div class="page-title">设置</div>
+                <div class="page-subtitle">管理你的 Agent 默认配置与组织成员</div>
+              </div>
+              <button class="settings-close" title="关闭设置">✕</button>
+            </div>
+          </div>
+
+          <div class="settings-page">
+            <nav class="settings-nav">
+              <div class="grp">设置</div>
+              <button class="settings-nav-item"><span class="ic">🤖</span><span>Agent 设置</span></button>
+              <button class="settings-nav-item on"><span class="ic">👥</span><span>成员管理</span></button>
+            </nav>
+
+            <div class="settings-content">
+              <div class="section-label-row">
+                <div class="section-label">飞书授权</div>
+                <div style="font-size:11.5px;color:#b0b0b0;margin-right:4px">企业授权管成员导入 · 个人授权管文档导入</div>
+              </div>
+              <div class="section-card">
+                <div class="fs-seg">
+                  <div class="seg2">
+                    <button class="on" type="button">🏢 企业授权</button>
+                    <button type="button">👤 个人授权</button>
+                  </div>
+                </div>
+
+                <!-- 企业授权：凭证未保存 -->
+                <div class="fs-field-row">
+                  <span class="fs-field-icon">⚙</span>
+                  <span class="fs-field-label">App ID</span>
+                  <input class="fs-field-input" value="cli_a3f8e09b2c61" spellcheck="false">
+                </div>
+                <div class="fs-field-row">
+                  <span class="fs-field-icon">⚙</span>
+                  <span class="fs-field-label">App Secret</span>
+                  <span class="fs-field-input secret">
+                    <input type="password" value="••••••••••••••••••" spellcheck="false">
+                    <button class="fs-eye-btn">显示</button>
+                  </span>
+                </div>
+                <div class="fs-cred-actions-row">
+                  <span class="fs-cred-sub">企业应用凭证用于读取通讯录（tenant_access_token），导入成员需要</span>
+                  <span class="fs-cred-actions">
+                    <button class="text-btn">清除</button>
+                    <button class="btn-primary">保存</button>
+                  </span>
+                </div>
+                <!-- 状态行：未连接（有草稿未保存） -->
+                <div class="settings-row" style="border-top:1px solid var(--row-divider)">
+                  <div class="settings-row-main">
+                    <span class="fs-row-icon">飞</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">
+                        企业应用连接
+                        <span class="badge">未连接</span>
+                      </span>
+                      <span class="settings-row-sub">配置并保存企业应用凭证后可导入成员</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right"></div>
+                </div>
+              </div>
+
+              <!-- 从飞书导入成员：未连接引导（置灰） -->
+              <div class="section-label">从飞书导入成员</div>
+              <div class="section-card">
+                <div class="import-guide-row" style="opacity:.75">
+                  <div class="import-guide-main">
+                    <span class="import-guide-icon warn">⇩</span>
+                    <span class="import-guide-text">
+                      <span class="import-guide-title">请先完成上方企业授权</span>
+                      <span class="import-guide-sub">保存企业应用凭证连接成功后，可从飞书通讯录导入成员</span>
+                    </span>
+                  </div>
+                  <button class="fs-import-btn" disabled title="请先完成企业授权（保存应用凭证）">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    从飞书导入成员
+                  </button>
+                </div>
+              </div>
+
+              <!-- 组织成员（示意前 2 条） -->
+              <div class="section-label">组织成员（5）</div>
+              <div class="section-card">
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#5b7ba6">S</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">shilu <span class="me-tag">我</span></span>
+                      <span class="settings-row-sub">平台 · 所有者 · 活跃于 10 分钟前</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="online-dot"></span>
+                    <span class="badge">所有者</span>
+                    <button class="text-btn danger" disabled title="唯一所有者不可移除">移除</button>
+                  </div>
+                </div>
+                <div class="settings-row">
+                  <div class="settings-row-main">
+                    <span class="mini-avatar" style="background:#3f8f5f">L</span>
+                    <span class="settings-row-text">
+                      <span class="settings-row-title">luyu</span>
+                      <span class="settings-row-sub">前端 · 管理员 · 活跃于 1 小时前</span>
+                    </span>
+                  </div>
+                  <div class="settings-row-right">
+                    <span class="badge info">管理员</span>
+                    <button class="text-btn danger">移除</button>
+                  </div>
+                </div>
+                <div class="settings-row" style="justify-content:center;color:#b0b0b0;font-size:11.5px;min-height:34px">
+                  … wang / chen / zhao（同图 1）
+                </div>
+                <p class="perm-note">
+                  <b>所有者</b>：拥有全部权限，可管理成员与组织配置（唯一所有者不可移除）；<b>管理员</b>：可导入与管理成员；<b>成员</b>：可使用项目与 Agent 能力。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <p class="anno">↑ 未连接态：状态行「未连接」灰徽标；导入引导行黄色 icon 置灰 + 按钮 disabled（title 提示原因）；保存凭证后状态行/引导行/按钮三处即时翻转为已连接</p>
+
+  <div class="doc-foot">
+    原型图 v2 · 创建日期 2026-10-23 · 对应技术方案 docs/用户设置页-邀请成员飞书导入-技术方案.md（v1.1）
+  </div>
+</div>
+
+<!-- 交互演示弹窗（图 1 的「从飞书导入成员」按钮触发的浮层） -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-title">从飞书导入成员</span>
+      <button class="modal-close" onclick="closeImport()">×</button>
+    </div>
+    <div class="conn-bar">
+      <span class="badge ok" style="flex-shrink:0">已连接</span>
+      <span>企业应用 <span class="mono">cli_a3f8…2c61</span> · 权限：读取通讯录</span>
+      <span class="cb-sub">tenant_access_token</span>
+    </div>
+    <div class="fs-list-wrap">
+      <div class="fs-list-head">
+        <span>飞书通讯录 · 共 12 人</span>
+        <span class="lk" onclick="toggleAll(this)">全选新人</span>
+      </div>
+      <div class="fs-list" id="mFsList">
+        <div class="fs-item disabled" title="已是组织成员">
+          <span class="fs-check"></span>
+          <span class="f-avatar" style="background:#c2752a">W</span>
+          <span class="f-main"><span class="f-name">wang</span><span class="f-sub">研发部 · 后端工程师</span></span>
+          <span class="f-tag">已是成员</span>
+        </div>
+        <div class="fs-item disabled" title="已是组织成员">
+          <span class="fs-check"></span>
+          <span class="f-avatar" style="background:#8a6fbf">C</span>
+          <span class="f-main"><span class="f-name">chen</span><span class="f-sub">测试部 · 测试工程师</span></span>
+          <span class="f-tag">已是成员</span>
+        </div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#3f8f5f">张</span><span class="f-main"><span class="f-name">张伟</span><span class="f-sub">产品部 · 产品经理</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#5b7ba6">李</span><span class="f-main"><span class="f-name">李娜</span><span class="f-sub">研发部 · 前端工程师</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#4a90a4">刘</span><span class="f-main"><span class="f-name">刘强</span><span class="f-sub">研发部 · 后端工程师</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#b05757">孙</span><span class="f-main"><span class="f-name">孙敏</span><span class="f-sub">测试部 · 测试工程师</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#c2752a">周</span><span class="f-main"><span class="f-name">周杰</span><span class="f-sub">设计部 · UI 设计师</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#8a6fbf">吴</span><span class="f-main"><span class="f-name">吴霞</span><span class="f-sub">运营部 · 运营专员</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#7c66d8">郑</span><span class="f-main"><span class="f-name">郑凯</span><span class="f-sub">研发部 · 算法工程师</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#4a90a4">冯</span><span class="f-main"><span class="f-name">冯雪</span><span class="f-sub">产品部 · 产品经理</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#3f8f5f">韩</span><span class="f-main"><span class="f-name">韩磊</span><span class="f-sub">研发部 · 架构师</span></span></div>
+        <div class="fs-item" onclick="togglePick(this)"><span class="fs-check"></span><span class="f-avatar" style="background:#b05757">唐</span><span class="f-main"><span class="f-name">唐悦</span><span class="f-sub">测试部 · 测试工程师</span></span></div>
+      </div>
+    </div>
+    <div class="import-foot">
+      <span class="foot-label">导入后权限</span>
+      <select class="field-select" id="mPermSelect">
+        <option>成员</option>
+        <option>管理员</option>
+      </select>
+      <span class="count">已选 <b id="mPickCount">0</b> 人（已是成员不可选）</span>
+      <span class="modal-actions">
+        <button class="text-btn" onclick="closeImport()">取消</button>
+        <button class="btn-primary" id="mImportBtn" disabled onclick="doImport2()">请勾选要导入的成员</button>
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- 演示控制 -->
+<div class="proto-ctrl">
+  <button class="proto-btn active" type="button" onclick="scrollToCap(0)">① 面板·企业授权 tab</button>
+  <button class="proto-btn" type="button" onclick="scrollToCap(1)">② 个人授权 tab</button>
+  <button class="proto-btn" type="button" onclick="scrollToCap(2)">③ 导入弹窗（静态图）</button>
+  <button class="proto-btn" type="button" onclick="scrollToCap(3)">④ 未连接态</button>
+  <button class="proto-btn" type="button" onclick="openImport()">▶ 弹窗交互演示（勾选 → 导入）</button>
+  <button class="proto-btn" type="button" onclick="switchTab('user'); scrollToCap(0)">▶ 切个人授权 tab 演示</button>
+</div>
+
+<script>
+  /* —— 定位静态图 —— */
+  function scrollToCap(i) {
+    var caps = document.querySelectorAll('.win-cap');
+    if (caps[i]) caps[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  /* —— 图 1：企业授权 / 个人授权 tab 切换 —— */
+  function switchTab(t) {
+    document.getElementById('tabCorp').className = t === 'corp' ? 'on' : '';
+    document.getElementById('tabUser').className = t === 'user' ? 'on' : '';
+    document.getElementById('corpPane').style.display = t === 'corp' ? 'block' : 'none';
+    document.getElementById('userPane').style.display = t === 'user' ? 'block' : 'none';
+  }
+  /* 个人授权 OAuth（800ms Mock） */
+  function doUserAuth() {
+    var btn = document.getElementById('userOpBtn');
+    btn.disabled = true;
+    btn.textContent = '授权中…';
+    setTimeout(function () {
+      btn.disabled = false;
+      btn.textContent = '取消授权';
+      btn.className = 'text-btn danger';
+      document.getElementById('userBadge').className = 'badge ok';
+      document.getElementById('userBadge').textContent = '已授权';
+      document.getElementById('userSub').textContent = 'shilu · 授权于 10-23 14:20 · 个人身份授权（user_access_token）用于项目「文档」导入';
+    }, 800);
+  }
+
+  /* —— 弹窗交互演示 —— */
+  function openImport() { document.getElementById('importModal').classList.add('show'); }
+  function closeImport() { document.getElementById('importModal').classList.remove('show'); }
+  function togglePick(el) {
+    if (el.classList.contains('disabled')) return;
+    var chk = el.querySelector('.fs-check');
+    var on = chk.classList.toggle('on');
+    chk.textContent = on ? '✓' : '';
+    el.classList.toggle('sel', on);
+    if (el.closest('#mFsList')) updateImportBtn();
+  }
+  function toggleAll(el) {
+    var list = document.getElementById('mFsList');
+    var items = list.querySelectorAll('.fs-item:not(.disabled)');
+    var allOn = Array.prototype.every.call(items, function (i) { return i.querySelector('.fs-check').classList.contains('on'); });
+    items.forEach(function (i) {
+      var chk = i.querySelector('.fs-check');
+      chk.classList.toggle('on', !allOn);
+      chk.textContent = !allOn ? '✓' : '';
+      i.classList.toggle('sel', !allOn);
+    });
+    updateImportBtn();
+  }
+  function updateImportBtn() {
+    var count = document.querySelectorAll('#mFsList .fs-check.on').length;
+    document.getElementById('mPickCount').textContent = count;
+    var btn = document.getElementById('mImportBtn');
+    if (count === 0) { btn.disabled = true; btn.textContent = '请勾选要导入的成员'; return; }
+    btn.disabled = false;
+    btn.textContent = '导入所选（' + count + ' 人）';
+  }
+  function doImport2() {
+    var btn = document.getElementById('mImportBtn');
+    btn.disabled = true;
+    btn.textContent = '导入中…';
+    setTimeout(function () {
+      var perm = document.getElementById('mPermSelect').value;
+      var permBadge = perm === '管理员' ? '<span class="badge info">管理员</span>' : '<span class="badge">成员</span>';
+      var list = document.getElementById('memberList');
+      var picked = document.querySelectorAll('#mFsList .fs-item');
+      var added = 0;
+      picked.forEach(function (item) {
+        if (!item.querySelector('.fs-check').classList.contains('on')) return;
+        var name = item.querySelector('.f-name').textContent;
+        var sub = item.querySelector('.f-sub').textContent;
+        var ini = name.charAt(0);
+        var row = document.createElement('div');
+        row.className = 'settings-row';
+        row.innerHTML =
+          '<div class="settings-row-main">' +
+          '  <span class="mini-avatar" style="background:#7c66d8">' + ini + '</span>' +
+          '  <span class="settings-row-text">' +
+          '    <span class="settings-row-title">' + name + '</span>' +
+          '    <span class="settings-row-sub">' + sub + ' · ' + perm + ' · 活跃于 刚刚</span>' +
+          '  </span>' +
+          '</div>' +
+          '<div class="settings-row-right">' + permBadge + '<button class="text-btn danger">移除</button></div>';
+        list.insertBefore(row, list.children[1]); // 新成员顶插入（shilu 之后）
+        item.remove();
+        added++;
+      });
+      document.getElementById('memberCount').textContent =
+        parseInt(document.getElementById('memberCount').textContent, 10) + added;
+      document.getElementById('mPickCount').textContent = '0';
+      updateImportBtn();
+      closeImport();
+      scrollToCap(0);
+    }, 1000);
+  }
+
+  /* —— 图 3 静态列表计数 —— */
+  function togglePickStatic(el) {
+    if (el.classList.contains('disabled')) return;
+    var chk = el.querySelector('.fs-check');
+    var on = chk.classList.toggle('on');
+    chk.textContent = on ? '✓' : '';
+    el.classList.toggle('sel', on);
+    refreshStatic();
+  }
+  function toggleAllStatic() {
+    var items = document.querySelectorAll('#fsListStatic .fs-item:not(.disabled)');
+    var allOn = Array.prototype.every.call(items, function (i) { return i.querySelector('.fs-check').classList.contains('on'); });
+    items.forEach(function (i) {
+      var chk = i.querySelector('.fs-check');
+      chk.classList.toggle('on', !allOn);
+      chk.textContent = !allOn ? '✓' : '';
+      i.classList.toggle('sel', !allOn);
+    });
+    refreshStatic();
+  }
+  function refreshStatic() {
+    var count = document.querySelectorAll('#fsListStatic .fs-check.on').length;
+    document.getElementById('pickCountStatic').textContent = count;
+    var btn = document.getElementById('importBtnStatic');
+    btn.textContent = count > 0 ? '导入所选（' + count + ' 人）' : '请勾选要导入的成员';
+    btn.disabled = count === 0;
+  }
+  refreshStatic();
+</script>
+</body>
+</html>

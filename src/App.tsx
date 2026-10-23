@@ -8,7 +8,7 @@ import ProjectDetail from './components/ProjectDetail'
 import SettingsPage, { type SettingsSection } from './components/SettingsPage'
 import HomeGrid, { type PaneSession } from './components/home-grid/HomeGrid'
 import { projects as initialProjects, projectFolders as initialFolders, createFolderMembers, type Notification, type Project, type ProjectFolder } from './data/projects'
-import { createDefaultUserSettings, createDefaultInviteData, type FeishuSettings, type InviteData, type UserSettings } from './data/settings'
+import { createDefaultUserSettings, createDefaultOrgMemberData, type FeishuSettings, type OrgMemberData, type UserSettings } from './data/settings'
 import { useAutomationEngine } from './hooks/useAutomationEngine'
 import { MultiViewIcon } from './components/icons'
 
@@ -30,14 +30,14 @@ export default function App() {
   const [multiView, setMultiView] = useState(false)
   /** 四窗格会话槽位（'new' / 'history:id' / null） */
   const [panes, setPanes] = useState<PaneSession[]>(INITIAL_PANES)
-  /** 设置页当前分区（Agent 设置 / 邀请成员） */
+  /** 设置页当前分区（Agent 设置 / 成员管理） */
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('agent')
   /** 进入设置页前的视图（× 关闭时回到该视图） */
   const prevViewRef = useRef<View>({ type: 'home' })
   /** 用户设置（Agent 设置面板数据，本地 state 不持久化） */
   const [userSettings, setUserSettings] = useState<UserSettings>(createDefaultUserSettings)
-  /** 邀请成员数据（本地 state 不持久化） */
-  const [inviteData, setInviteData] = useState<InviteData>(createDefaultInviteData)
+  /** 组织成员数据（成员管理面板，本地 state 不持久化） */
+  const [orgData, setOrgData] = useState<OrgMemberData>(createDefaultOrgMemberData)
 
   const engine = useAutomationEngine(projects, setProjects)
 
@@ -50,16 +50,9 @@ export default function App() {
     setProjects((list) => list.map((p) => (p.id === projectId ? updater(p) : p)))
   }
 
-  /** 飞书授权状态写回（全局共享：设置页与「文档」子 tab 导入弹窗共用） */
+  /** 飞书授权状态写回（全局共享：成员管理面板与「文档」子 tab 导入弹窗共用） */
   const handleUpdateFeishu = (updater: (f: FeishuSettings) => FeishuSettings) => {
     setUserSettings((s) => ({ ...s, feishu: updater(s.feishu) }))
-  }
-
-  /** 跳转设置页「飞书授权」分区（导入弹窗未配置凭证引导） */
-  const handleGoToFeishuSettings = () => {
-    prevViewRef.current = view
-    setSettingsSection('feishu')
-    setView({ type: 'settings' })
   }
 
   /** 通知跳转：进入对应项目详情 → 自动化任务 tab → 待人工处理 segment → 高亮定位任务卡片 */
@@ -121,9 +114,9 @@ export default function App() {
   const handleUpdateSettings = (updater: (s: UserSettings) => UserSettings) =>
     setUserSettings((s) => updater(s))
 
-  /** 更新邀请成员数据（局部 updater） */
-  const handleUpdateInvite = (updater: (d: InviteData) => InviteData) =>
-    setInviteData((d) => updater(d))
+  /** 更新组织成员数据（局部 updater） */
+  const handleUpdateOrg = (updater: (d: OrgMemberData) => OrgMemberData) =>
+    setOrgData((d) => updater(d))
 
   return (
     <div className="desktop">
@@ -201,7 +194,6 @@ export default function App() {
                 focusJobId={view.focusJobId}
                 feishu={userSettings.feishu}
                 onUpdateFeishu={handleUpdateFeishu}
-                onGoToFeishuSettings={handleGoToFeishuSettings}
               />
             )}
 
@@ -212,8 +204,8 @@ export default function App() {
                 onClose={handleCloseSettings}
                 settings={userSettings}
                 onUpdateSettings={handleUpdateSettings}
-                invite={inviteData}
-                onUpdateInvite={handleUpdateInvite}
+                org={orgData}
+                onUpdateOrg={handleUpdateOrg}
               />
             )}
           </main>

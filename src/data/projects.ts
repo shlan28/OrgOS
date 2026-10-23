@@ -686,9 +686,11 @@ export const SESSION_AVATAR_COLORS: Record<string, string> = {
 export const sessionColorOf = (sessionId: string): string =>
   SESSION_AVATAR_COLORS[sessionId] ?? '#5b7ba6'
 
-/** 成员头像底色（消息流 / 成员抽屉共用配色） */
+/** 成员头像底色（消息流 / 成员抽屉共用配色；后半段为飞书导入新成员用色） */
 export const MEMBER_COLORS: Record<string, string> = {
   shilu: '#5b7ba6', luyu: '#3f8f5f', wang: '#c2752a', chen: '#8a6fbf', zhao: '#4a90a4', sun: '#b05757',
+  张伟: '#3f8f5f', 李娜: '#5b7ba6', 刘强: '#4a90a4', 孙敏: '#b05757', 周杰: '#c2752a',
+  吴霞: '#8a6fbf', 郑凯: '#7c66d8', 冯雪: '#4a90a4', 韩磊: '#3f8f5f', 唐悦: '#b05757',
 }
 
 /** 成员头像底色（未知成员回退默认灰蓝） */

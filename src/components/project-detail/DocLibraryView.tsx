@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { DocLibrary, KbFolder, KbDoc } from '../../data/projects'
 import type { FeishuSettings } from '../../data/settings'
-import { feishuCredReady } from '../../data/settings'
 import { DocIcon, ChevronRightIcon, FolderIcon, ExternalIcon, DownloadIcon } from '../icons'
 import './KbIndexPanel.css'
 import './DocLibraryView.css'
@@ -10,12 +9,10 @@ interface DocLibraryViewProps {
   /** 库数据（「文档」子 tab = project.documents） */
   library: DocLibrary
   onUpdateLibrary: (lib: DocLibrary) => void
-  /** 飞书授权设置（OAuth 导入流程用） */
+  /** 飞书个人授权设置（OAuth 导入流程用；与凭证无关） */
   feishu: FeishuSettings
   /** 授权状态写回（授权 / 取消授权，Mock 全局共享） */
   onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
-  /** 跳转设置页「飞书授权」分区（未配置凭证引导） */
-  onGoToFeishuSettings: () => void
 }
 
 /** 「全部文档」伪目录 id */
@@ -101,10 +98,11 @@ type FsPath = string[]
 
 /**
  * 「文档」子 tab 视图（飞书化）：
- * 左栏多层级目录树 + 右栏文档列表（只读，行尾 ⇗ 跳飞书）+ OAuth 导入弹窗（授权 → 选飞书目录）。
+ * 左栏多层级目录树 + 右栏文档列表（只读，行尾 ⇗ 跳飞书）+ OAuth 导入弹窗（个人授权 → 选飞书目录；
+ * 个人授权与凭证解耦，弹窗无凭证警示条）。
  */
 export default function DocLibraryView({
-  library, onUpdateLibrary, feishu, onUpdateFeishu, onGoToFeishuSettings,
+  library, onUpdateLibrary, feishu, onUpdateFeishu,
 }: DocLibraryViewProps) {
   const { docs, folders } = library
   // 目录树状态（多层级）
@@ -397,8 +395,6 @@ export default function DocLibraryView({
     )
   }
 
-  const credReady = feishuCredReady(feishu)
-
   /* ---------- 列表视图（对齐项目知识库 kbi 样式体系：左目录树 + 右列表） ---------- */
   return (
     <div className="doclib-panel">
@@ -469,18 +465,10 @@ export default function DocLibraryView({
               <button type="button" className="modal-close" aria-label="关闭" onClick={() => setImporting(false)}>×</button>
             </div>
 
-            {/* 凭证未配置警示条 */}
-            {!credReady && (
-              <div className="fs-cred-warn">
-                <span>尚未配置飞书应用凭证（App ID / App Secret）</span>
-                <button type="button" className="fs-warn-act" onClick={onGoToFeishuSettings}>去设置</button>
-              </div>
-            )}
-
             {/* 步骤条 */}
             <div className="fs-steps">
               <span className={`fs-step${feishu.authorized ? ' done' : ' active'}`}>
-                <span className="fs-step-num">{feishu.authorized ? '✓' : '1'}</span>飞书授权
+                <span className="fs-step-num">{feishu.authorized ? '✓' : '1'}</span>个人授权
               </span>
               <span className="fs-step-arrow">→</span>
               <span className={`fs-step${feishu.authorized ? ' active' : ''}`}>
@@ -488,12 +476,10 @@ export default function DocLibraryView({
               </span>
             </div>
 
-            {/* 步骤 1：授权卡 */}
+            {/* 步骤 1：个人授权卡（与凭证无关，未授权直接授权） */}
             <div className="fs-auth-card">
               <div className="fs-auth-title">飞书个人授权</div>
-              <div className="fs-auth-sub">
-                应用：{feishu.appId ? `${feishu.appId.slice(0, 8)}…${feishu.appId.slice(-4)}` : '（未配置）'} · 权限：读取云文档目录
-              </div>
+              <div className="fs-auth-sub">权限：读取云文档目录 · OAuth 登录授权，无需配置应用凭证</div>
               {feishu.authorized ? (
                 <div className="fs-auth-done">
                   <span className="fs-ok-badge">已授权</span>
@@ -503,8 +489,8 @@ export default function DocLibraryView({
                 <button
                   type="button"
                   className="fs-auth-btn"
-                  disabled={authorizing || !credReady}
-                  title={!credReady ? '请先在设置页配置应用凭证' : '发起飞书个人授权'}
+                  disabled={authorizing}
+                  title="发起飞书个人授权"
                   onClick={handleAuthorize}
                 >
                   {authorizing ? '授权中…' : '授权'}

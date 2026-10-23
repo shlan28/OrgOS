@@ -1,18 +1,16 @@
 import { useEffect } from 'react'
-import type { InviteData, UserSettings } from '../data/settings'
+import type { OrgMemberData, UserSettings } from '../data/settings'
 import AgentSettingsPanel from './settings/AgentSettingsPanel'
 import InviteMembersPanel from './settings/InviteMembersPanel'
-import FeishuPanel from './settings/FeishuPanel'
-import { RobotIcon, UsersIcon, FeishuIcon } from './icons'
+import { RobotIcon, UsersIcon } from './icons'
 import './SettingsPage.css'
 
-/** 设置页左导航项 */
-export type SettingsSection = 'agent' | 'invite' | 'feishu'
+/** 设置页左导航项（飞书授权已并入「成员管理」） */
+export type SettingsSection = 'agent' | 'invite'
 
 const NAV_ITEMS: { key: SettingsSection; label: string; icon: (s: number) => React.ReactNode }[] = [
   { key: 'agent', label: 'Agent 设置', icon: (s) => <RobotIcon size={s} /> },
-  { key: 'invite', label: '邀请成员', icon: (s) => <UsersIcon size={s} /> },
-  { key: 'feishu', label: '飞书授权', icon: (s) => <FeishuIcon size={s} /> },
+  { key: 'invite', label: '成员管理', icon: (s) => <UsersIcon size={s} /> },
 ]
 
 interface SettingsPageProps {
@@ -25,18 +23,19 @@ interface SettingsPageProps {
   settings: UserSettings
   /** 更新用户设置（局部 patch） */
   onUpdateSettings: (updater: (s: UserSettings) => UserSettings) => void
-  /** 邀请成员数据 */
-  invite: InviteData
-  /** 更新邀请成员数据（局部 patch） */
-  onUpdateInvite: (updater: (d: InviteData) => InviteData) => void
+  /** 组织成员数据 */
+  org: OrgMemberData
+  /** 更新组织成员数据（局部 patch） */
+  onUpdateOrg: (updater: (d: OrgMemberData) => OrgMemberData) => void
 }
 
 /**
- * 设置页：页头（标题 + × 关闭）+ 左导航（Agent 设置 / 邀请成员）+ 右内容双栏。
+ * 设置页：页头（标题 + × 关闭）+ 左导航（Agent 设置 / 成员管理）+ 右内容双栏。
+ * 飞书授权并入「成员管理」面板（顶部企业授权 / 个人授权两子 tab）。
  * 数据与写操作全部由 App 注入；面板组件零持久化。
  */
 export default function SettingsPage({
-  section, onChangeSection, onClose, settings, onUpdateSettings, invite, onUpdateInvite,
+  section, onChangeSection, onClose, settings, onUpdateSettings, org, onUpdateOrg,
 }: SettingsPageProps) {
   /** Esc 关闭（无浮层时） */
   useEffect(() => {
@@ -85,8 +84,14 @@ export default function SettingsPage({
         {/* 右内容 */}
         <div className="settings-content">
           {section === 'agent' && <AgentSettingsPanel settings={settings} onUpdateSettings={onUpdateSettings} />}
-          {section === 'invite' && <InviteMembersPanel invite={invite} onUpdateInvite={onUpdateInvite} />}
-          {section === 'feishu' && <FeishuPanel settings={settings} onUpdateSettings={onUpdateSettings} />}
+          {section === 'invite' && (
+            <InviteMembersPanel
+              settings={settings}
+              onUpdateSettings={onUpdateSettings}
+              org={org}
+              onUpdateOrg={onUpdateOrg}
+            />
+          )}
         </div>
       </div>
     </div>
