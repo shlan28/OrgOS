@@ -10,22 +10,33 @@
   flex-direction: column;
 }
 
-/* ===== 项目知识库：左右双栏 ===== */
+/* ===== 文档 / 项目知识库：左右双栏（目录树可收缩，右栏保底宽） ===== */
 .kb-two-col {
   flex-direction: row;
   gap: 0;
   align-items: stretch;
 }
 
-/* 左栏：目录树 */
+/* 左栏：目录树（窄格可收缩，不挤死右栏） */
 .kb-tree {
   width: 200px;
-  flex-shrink: 0;
+  max-width: 200px;
+  flex: 0 1 200px;
   border-right: 1px solid var(--border);
   padding-right: 12px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: auto;
+}
+
+/* 右栏保底宽：标题/摘要至少可读 */
+.kb-segment.kb-two-col {
+  min-width: 0;
+}
+
+.kb-segment.kb-two-col .kb-main {
+  min-width: 220px;
 }
 
 .kb-tree-head {
@@ -203,6 +214,18 @@
   padding-left: 18px;
   display: flex;
   flex-direction: column;
+}
+
+/* 分组标题与右侧操作按钮：不折行（窄格下省略/收缩按钮，不竖排） */
+.kb-main .section-label-row .section-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kb-main .section-label-row .text-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .kb-main.kb-detail {

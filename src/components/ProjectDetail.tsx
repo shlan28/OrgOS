@@ -5,6 +5,7 @@ import FormModal, { ModalField } from './FormModal'
 import SpecsPanel from './project-detail/SpecsPanel'
 import CodePanel from './project-detail/CodePanel'
 import KnowledgePanel from './project-detail/KnowledgePanel'
+import MemoryPanel from './project-detail/MemoryPanel'
 import EfficiencyPanel from './project-detail/EfficiencyPanel'
 import SecurityPanel from './project-detail/SecurityPanel'
 import CodeReviewPanel from './project-detail/CodeReviewPanel'
@@ -20,18 +21,19 @@ import { useResizableColumns } from '../hooks/useResizableColumns'
 import type { AutomationEngine } from '../hooks/useAutomationEngine'
 import {
   DocIcon, CodeIcon,
-  BookIcon, ShieldIcon, FlaskIcon, ChartIcon, ChecklistIcon, WorkflowIcon,
+  BookIcon, ShieldIcon, FlaskIcon, ChartIcon, ChecklistIcon, WorkflowIcon, BrainIcon,
 } from './icons'
 import StatusBadge from './StatusBadge'
 import './ProjectDetail.css'
 
-type NavKey = 'specs' | 'code' | 'knowledge' | 'workflow' | 'efficiency' | 'codereview' | 'security' | 'testing'
+type NavKey = 'specs' | 'code' | 'knowledge' | 'memory' | 'workflow' | 'efficiency' | 'codereview' | 'security' | 'testing'
 
-/** 格 4 tab 元数据（8 项；项目成员/ADE 管理在编辑项目弹窗，自动化任务面板移除） */
+/** 格 4 tab 元数据（9 项；项目成员/ADE 管理在编辑项目弹窗，自动化任务面板移除；记忆自「知识记忆」拆出为独立 tab） */
 const TAB_ITEMS: TabItem[] = [
   { key: 'specs', label: '项目规范', icon: (s) => <DocIcon size={s} /> },
   { key: 'code', label: '代码', icon: (s) => <CodeIcon size={s} /> },
-  { key: 'knowledge', label: '知识记忆', icon: (s) => <BookIcon size={s} /> },
+  { key: 'knowledge', label: '文档和知识库', icon: (s) => <BookIcon size={s} /> },
+  { key: 'memory', label: '记忆', icon: (s) => <BrainIcon size={s} /> },
   { key: 'workflow', label: '工作流', icon: (s) => <WorkflowIcon size={s} /> },
   { key: 'efficiency', label: '自动化统计', icon: (s) => <ChartIcon size={s} /> },
   { key: 'codereview', label: '代码审查', icon: (s) => <ChecklistIcon size={s} /> },
@@ -347,6 +349,15 @@ export default function ProjectDetail({
       case 'knowledge':
         return (
           <KnowledgePanel
+            documents={project.documents}
+            onUpdateDocuments={(documents) => onUpdateProject(project.id, (p) => ({ ...p, documents }))}
+            knowledge={project.knowledge}
+            onUpdateKnowledge={(knowledge) => onUpdateProject(project.id, (p) => ({ ...p, knowledge }))}
+          />
+        )
+      case 'memory':
+        return (
+          <MemoryPanel
             knowledge={project.knowledge}
             onUpdateKnowledge={(knowledge) => onUpdateProject(project.id, (p) => ({ ...p, knowledge }))}
           />

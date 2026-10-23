@@ -448,6 +448,12 @@ export interface KbDoc {
   summary: string
 }
 
+/** 文档库（「文档和知识库」tab 的「文档」子 tab：目录树 + 文档列表，与项目知识库同构） */
+export interface DocLibrary {
+  folders: KbFolder[]
+  docs: KbDoc[]
+}
+
 /** 记忆条目（带生命周期） */
 export interface MemoryItem {
   id: string
@@ -484,6 +490,11 @@ export interface Knowledge {
   docs: KbDoc[]
   memories: MemoryItem[]
   memorySettings: MemorySettings
+}
+
+/** 空文档库（新建项目工厂用） */
+export function createEmptyDocLibrary(): DocLibrary {
+  return { folders: [], docs: [] }
 }
 
 /* —— 项目会话（详情页格 1 会话列表） —— */
@@ -690,6 +701,8 @@ export interface Project {
   agents: AdeAgent[]
   autoJobs: AutoJob[]
   knowledge: Knowledge
+  /** 文档库（「文档和知识库」tab 的「文档」子 tab，与项目知识库同构） */
+  documents: DocLibrary
   specs: SpecDoc[]
   /** 代码仓库（可编辑 + 只读，见 CodeRepo） */
   repos: CodeRepo[]
@@ -834,6 +847,7 @@ export function createEmptyProject(input: {
         reflectRules: '',
       },
     },
+    documents: createEmptyDocLibrary(),
     specs: [],
     repos: [],
     security: createDefaultSecurity(),
@@ -1234,6 +1248,44 @@ export const projects: Project[] = [
         { id: 'mem3', content: '旧版埋点方案（已废弃，仅供追溯）。', source: '手动', createdAt: '04-12', lifecycle: '已归档', reflectNote: '旧版埋点方案已被新方案替代，AI 于 08-28 反思归档' },
       ],
       memorySettings: { autoCollect: true, collectRules: '只收集代码规范、架构决策与组件拆分相关的要点，忽略闲聊与临时调试内容。', retentionDays: 90, permanent: false, expirePolicy: '自动归档', autoReflect: true, reflectFrequency: '每周', reflectRules: '与当前架构规范冲突或引用已废弃方案的记忆自动归档，组件与接口约定类记忆保持活跃。' },
+    },
+    documents: {
+      folders: [
+        { id: 'df1', name: '产品' },
+        { id: 'df2', name: '研发流程', parentId: 'df1' },
+      ],
+      docs: [
+        {
+          id: 'dd1', title: '产品需求文档 PRD v3', source: '本地文件', sourceRef: 'docs/prd-v3.md', folderId: 'df1',
+          importedAt: '09-02', updatedAt: '09-02',
+          markdown: '# 产品需求文档 PRD v3\n\n## 多视窗\n\n首页支持 2×2 四窗格。\n\n## 项目中心\n\n文件夹分组下钻。',
+          content: [
+            { heading: '多视窗', body: '首页支持 2×2 四窗格，空窗格可打开历史会话。' },
+            { heading: '项目中心', body: '项目卡片按文件夹分组，支持下钻浏览。' },
+          ],
+          summary: 'PRD v3：首页多视窗四窗格与项目中心文件夹分组。',
+        },
+        {
+          id: 'dd2', title: '发布流程说明', source: '手动', sourceRef: '', folderId: 'df2',
+          importedAt: '09-05', updatedAt: '09-05',
+          markdown: '# 发布流程说明\n\n## 环境\n\ntest → staging → prod。\n\n## 窗口\n\n每周二、四 14:00 后可发。',
+          content: [
+            { heading: '环境', body: 'test → staging → prod 三级环境顺序发布。' },
+            { heading: '窗口', body: '每周二、四 14:00 后可发版，紧急修复走绿色通道。' },
+          ],
+          summary: '三级环境顺序发布，每周二/四 14:00 后为发版窗口。',
+        },
+        {
+          id: 'dd3', title: '会议纪要-需求评审', source: '团队 wiki', sourceRef: 'wiki/loom/minutes-0901', folderId: 'df1',
+          importedAt: '09-01', updatedAt: '09-03',
+          markdown: '# 会议纪要 · 需求评审\n\n## 结论\n\n多视窗一期只做 2×2。\n\n## 待办\n\nluyu 补接口文档。',
+          content: [
+            { heading: '结论', body: '多视窗一期只做 2×2，滚动加载二期再议。' },
+            { heading: '待办', body: 'luyu 补接口文档；wang 准备回归用例。' },
+          ],
+          summary: '需求评审结论：多视窗一期只做 2×2，接口文档与用例分派。',
+        },
+      ],
     },
     specs: [
       {
@@ -1688,6 +1740,33 @@ export const projects: Project[] = [
       ],
       memorySettings: { autoCollect: true, collectRules: '重点收集支付、账号安全相关的处理经验，涉及第三方 SDK 的坑需完整记录。', retentionDays: 180, permanent: false, expirePolicy: '仅提醒', autoReflect: true, reflectFrequency: '每天', reflectRules: '支付与账号安全相关记忆保持活跃，已下线渠道的处理经验自动归档。' },
     },
+    documents: {
+      folders: [
+        { id: 'df1', name: '需求' },
+      ],
+      docs: [
+        {
+          id: 'dd1', title: '支付需求说明 v2', source: '团队 wiki', sourceRef: 'wiki/yigou/pay-req', folderId: 'df1',
+          importedAt: '08-22', updatedAt: '08-22',
+          markdown: '# 支付需求说明 v2\n\n## 收银台\n\n统一收银台收口。\n\n## 幂等\n\n回调需幂等。',
+          content: [
+            { heading: '收银台', body: '所有支付请求统一经收银台收口分发。' },
+            { heading: '幂等', body: '支付回调需幂等处理，重试不重复入账。' },
+          ],
+          summary: '支付 v2：统一收银台收口，回调幂等处理。',
+        },
+        {
+          id: 'dd2', title: '灰度计划', source: '手动', sourceRef: '', folderId: 'df1',
+          importedAt: '08-26', updatedAt: '08-26',
+          markdown: '# 灰度计划\n\n## 阶段\n\n10% → 50% → 全量。\n\n## 观察\n\n每阶段观察 24 小时。',
+          content: [
+            { heading: '阶段', body: '10% → 50% → 全量三阶段放量。' },
+            { heading: '观察', body: '每阶段观察 24 小时，崩溃率超阈值回滚。' },
+          ],
+          summary: '灰度三阶段放量，每阶段观察 24 小时。',
+        },
+      ],
+    },
     specs: [
       {
         id: 's1', name: 'README.md', note: '项目说明', updatedAt: '08-18', inPrompt: false,
@@ -1832,6 +1911,7 @@ export const projects: Project[] = [
       memories: [],
       memorySettings: { autoCollect: false, collectRules: '收集数据口径与调度配置的变更记录，忽略一次性脚本调试内容。', retentionDays: 90, permanent: false, expirePolicy: '自动归档', autoReflect: false, reflectFrequency: '每周', reflectRules: '' },
     },
+    documents: createEmptyDocLibrary(),
     specs: [
       {
         id: 's1', name: 'README.md', note: '项目说明', updatedAt: '08-20', inPrompt: false,

@@ -1,0 +1,289 @@
+/* ===== 「记忆」tab（MemoryPanel）：记忆条目 + 记忆规则弹窗 ===== */
+
+.memory-segment {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.memory-segment > .section-card {
+  margin-top: 2px;
+}
+
+/* 手动添加记忆弹窗：大号多行输入框 */
+.memory-textarea {
+  width: 100%;
+  min-height: 140px;
+  height: 140px;
+  padding: 10px 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.memory-textarea::placeholder {
+  color: #b0b0b0;
+}
+
+/* 记忆条目行（复用 settings-row 体系） */
+.memory-row.archived .settings-row-title,
+.memory-row.archived .settings-row-sub {
+  color: var(--status-neutral);
+}
+
+.memory-expand {
+  flex-basis: 100%;
+  padding: 2px 0 4px 0;
+}
+
+.memory-expand-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* ===== 记忆规则弹窗：左右结构（左小标题导航 / 右具体内容） ===== */
+
+/* 弹窗高度固定：不随右侧内容（收集规则大 textarea 等）增减变化 */
+.memory-rules-modal {
+  width: 640px;
+  height: 560px;
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 内容区弹性占满固定高（右侧溢出时区内滚动） */
+.memory-rules-body {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* 左：小标题导航列（可点击切换右侧内容；占满固定高） */
+.memory-rules-nav {
+  width: 128px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--main-bg);
+  padding: 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.memory-rules-nav-item {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: 7px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.memory-rules-nav-item:hover {
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.035);
+}
+
+.memory-rules-nav-item.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* 右：当前选中项的具体内容（占满固定高，区内滚动） */
+.memory-rules-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.memory-rules-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.memory-rules-field-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.memory-rules-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.memory-rules-error {
+  font-size: 12px;
+  color: var(--status-danger);
+  margin: 0;
+}
+
+/* 收集规则 textarea（自动收集关闭时禁用态）：加大 4 倍编辑区 */
+.memory-rules-modal .rules-textarea {
+  width: 100%;
+  min-height: 288px;
+  height: 288px;
+  padding: 10px 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.memory-rules-modal .rules-textarea::placeholder {
+  color: #b0b0b0;
+}
+
+.memory-rules-modal .rules-textarea:disabled {
+  background: #f5f5f7;
+  color: #b0b0b0;
+}
+
+/* 反思规则 textarea */
+.memory-rules-modal .reflect-textarea {
+  width: 100%;
+  min-height: 64px;
+  height: 64px;
+  padding: 8px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.memory-rules-modal .reflect-textarea::placeholder {
+  color: #b0b0b0;
+}
+
+/* 保留策略行（天 + 永久 + 过期策略）与反思频率组（复用原样式类，微调换行） */
+.memory-rules-modal .inline-edit-fields {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+.memory-rules-modal .reflect-field {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+
+/* ===== 通用（原 KnowledgePanel.css 迁移的记忆相关样式，保持组件可用） ===== */
+
+.rules-textarea {
+  width: 100%;
+  min-height: 72px;
+  height: 72px;
+  padding: 8px 10px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.rules-textarea::placeholder {
+  color: #b0b0b0;
+}
+
+.policy-days-input {
+  width: 90px;
+  flex: none;
+}
+
+.policy-days-input:disabled {
+  background: #f5f5f7;
+  color: #b0b0b0;
+}
+
+.policy-days-unit {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.policy-permanent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* ===== 自动反思规则（频率按钮组 + 备注） ===== */
+
+.reflect-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reflect-field-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.reflect-freq {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.reflect-freq button {
+  border: none;
+  background: transparent;
+  height: 30px;
+  padding: 0 14px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.reflect-freq button + button {
+  border-left: 1px solid var(--border);
+}
+
+.reflect-freq button:hover:not(.active) {
+  color: var(--text-primary);
+}
+
+.reflect-freq button.active {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+.reflect-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* 记忆展开区 AI 反思备注条 */
+.reflect-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--main-bg);
+  border: 1px solid var(--row-divider);
+  border-radius: 7px;
+  padding: 6px 10px;
+  margin: 0;
+}
+
+.reflect-note strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
