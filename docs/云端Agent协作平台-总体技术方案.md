@@ -103,7 +103,8 @@ RAG 索引服务       工作流执行器          模型网关           定时
 
 - 管理员在组织层配置 IdP（飞书 / Google Workspace / 通用 OIDC）；
 - 登录回调后签发短时 access token + 刷新 token（httpOnly cookie）；
-- 组织架构与头像从 IdP 同步，减少「邀请成员」的复杂度；
+- 组织架构与头像从 IdP 同步；成员可由管理员通过**飞书通讯录导入**（企业授权 `tenant_access_token`）；
+- 飞书侧存在**两种独立授权**：企业授权（应用凭证，管成员导入与项目自有文档夹）与个人授权（OAuth `user_access_token`，管文档导入与编辑），互不影响；
 - WebSocket 握手校验 token，连接绑定 `user_id + org_id`。
 
 ### 3.2 角色模型（两层 RBAC）
