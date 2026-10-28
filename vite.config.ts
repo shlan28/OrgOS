@@ -7,5 +7,12 @@ export default defineConfig({
     // 监听所有网卡，允许平台预览代理（外部域名）访问
     host: true,
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8791',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
 })
