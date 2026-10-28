@@ -39,6 +39,17 @@
   flex: 1;
 }
 
+/* 会话所属 agent */
+.term-agent {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
 /* 运行中呼吸点（agent loop 实时增长提示） */
 .term-running-dot {
   width: 7px;
