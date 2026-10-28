@@ -287,3 +287,144 @@
   color: var(--text-primary);
   font-weight: 600;
 }
+
+/* ===== 保留策略：三张后果说明卡片 ===== */
+
+.policy-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.policy-days-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.policy-input-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.policy-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.policy-option + .policy-option {
+  border-top: 1px solid var(--row-divider);
+}
+
+.policy-option:hover:not(.disabled) {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.policy-option.selected {
+  background: var(--main-bg);
+}
+
+.policy-option.disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.policy-option-radio {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  position: relative;
+}
+
+.policy-option.selected .policy-option-radio {
+  border-color: var(--text-primary);
+}
+
+.policy-option.selected .policy-option-radio::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--text-primary);
+}
+
+.policy-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.policy-option-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.policy-option-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.policy-recommend {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--main-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+.policy-summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--row-divider);
+}
+
+/* ===== 自动收集：每 N 轮 + 立即收集 ===== */
+
+.collect-every-label {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.collect-every-input {
+  width: 64px;
+  height: 30px;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.memory-collect-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.memory-collect-row .memory-rules-hint {
+  margin: 0;
+}
+

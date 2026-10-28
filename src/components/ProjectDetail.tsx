@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
-import type { AdeAgent, Member, Project, ProjectFolder, ProjectSession } from '../data/projects'
-import { CURRENT_USER, memberColorOf, ADE_LLM_BASES, createDefaultAdeConfig } from '../data/projects'
-import type { FeishuSettings } from '../data/settings'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type {
+  AdeAgent, Member, Project, ProjectFolder, RunMessage, TerminalLog,
+} from '../data/projects'
+import { memberColorOf } from '../data/projects'
+import { orgApi, type OrgMember } from '../lib/orgApi'
+import { runtimeApi, type RuntimeSession } from '../lib/runtimeApi'
+import { memoryApi } from '../lib/memoryApi'
 import FormModal, { ModalField } from './FormModal'
 import SpecsPanel from './project-detail/SpecsPanel'
 import CodePanel from './project-detail/CodePanel'
@@ -17,22 +21,25 @@ import PlaceholderPanel from './PlaceholderPanel'
 import ChatPane from './project-detail/ChatPane'
 import SessionRail from './project-detail/SessionRail'
 import TerminalPane from './project-detail/TerminalPane'
+import PtyTerminalPanel from './project-detail/PtyTerminalPanel'
 import ClosableTabs, { type TabItem } from './project-detail/ClosableTabs'
 import { useResizableColumns } from '../hooks/useResizableColumns'
+import { useRealSession } from '../hooks/useRealSession'
 import type { AutomationEngine } from '../hooks/useAutomationEngine'
 import {
   DocIcon, CodeIcon,
-  BookIcon, ShieldIcon, FlaskIcon, ChartIcon, ChecklistIcon, WorkflowIcon, BrainIcon,
+  BookIcon, ShieldIcon, FlaskIcon, ChartIcon, ChecklistIcon, WorkflowIcon, BrainIcon, TerminalIcon,
 } from './icons'
 import StatusBadge from './StatusBadge'
 import './ProjectDetail.css'
 
-type NavKey = 'specs' | 'code' | 'knowledge' | 'memory' | 'workflow' | 'efficiency' | 'codereview' | 'security' | 'testing'
+type NavKey = 'specs' | 'code' | 'terminal' | 'knowledge' | 'memory' | 'workflow' | 'efficiency' | 'codereview' | 'security' | 'testing'
 
-/** 格 4 tab 元数据（9 项；项目成员/ADE 管理在编辑项目弹窗，自动化任务面板移除；记忆自「知识记忆」拆出为独立 tab） */
+/** 格 4 tab 元数据（项目成员/ADE 管理在编辑项目弹窗；终端默认收起，经 ＋ 菜单重开） */
 const TAB_ITEMS: TabItem[] = [
   { key: 'specs', label: '项目规范', icon: (s) => <DocIcon size={s} /> },
   { key: 'code', label: '代码', icon: (s) => <CodeIcon size={s} /> },
+  { key: 'terminal', label: '终端', icon: (s) => <TerminalIcon size={s} /> },
   { key: 'knowledge', label: '文档和知识库', icon: (s) => <BookIcon size={s} /> },
   { key: 'memory', label: '记忆', icon: (s) => <BrainIcon size={s} /> },
   { key: 'workflow', label: '工作流', icon: (s) => <WorkflowIcon size={s} /> },
@@ -44,8 +51,6 @@ const TAB_ITEMS: TabItem[] = [
 
 /** 默认打开的 tab（自动化统计 / 代码审查 / 安全审查 / 测试默认收起，经 ＋ 菜单重开） */
 const DEFAULT_OPEN_TABS: NavKey[] = ['specs', 'code', 'knowledge', 'memory', 'workflow']
-
-const ALL_TAB_KEYS = TAB_ITEMS.map((t) => t.key as NavKey)
 
 const STATUSES: Project['status'][] = ['规划中', '进行中', '已完成']
 
@@ -71,55 +76,173 @@ interface ProjectDetailProps {
   engine: AutomationEngine
   /** 外部指定初始导航项（通知跳转直达 workflow） */
   initialNav?: NavKey
-  /** 通知跳转定位的任务 id（切到对应会话） */
-  focusJobId?: string | null
-  /** 飞书个人授权设置（「文档」子 tab OAuth 导入用） */
-  feishu: FeishuSettings
-  /** 授权状态写回（Mock 全局共享） */
-  onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
+  /** 当前登录用户名（成员「我」标识） */
+  currentUserName: string
+  /** 设置页已配置的 Agent（项目 agent 只能从这里添加） */
+  settingsAgents: AdeAgent[]
+  /** 保存 Agent 配置（写回设置页 Agent） */
+  onUpdateAgent: (next: AdeAgent) => void
+  /** 绑定 / 解绑项目 agent（projectId = null 表示从项目移除） */
+  onBindAgent: (agentId: string, projectId: string | null) => void
+  /** 删除项目（软删除，成功后由 App 退回项目中心） */
+  onDeleteProject: (projectId: string) => void
+  /** 重新载入 Agent（后端派生的工作中/空闲状态） */
+  onRefreshAgents: () => void
 }
 
 /** 四格列宽比例（flex-grow 权重）：10% / 20% / 35% / 35%——格 3 Agent CLI 与格 4 工作流占大头
  *  minWidth 取「常见视口（≥1280）下不触底」的值，保证比例精确；窄窗口才由 min 兜底防塌 */
 const COLUMN_SPECS = [
-  { ratio: 10, minWidth: 96 },  // 格 1 会话列表（1280 下 10% ≈ 98px，不触底）
-  { ratio: 20, minWidth: 180 }, // 格 2 会话详情（1280 下 20% ≈ 195px，不触底）
-  { ratio: 35, minWidth: 160 }, // 格 3 Agent CLI
+  { ratio: 14, minWidth: 128 }, // 格 1 会话列表（创建者/未读/状态）
+  { ratio: 18, minWidth: 180 }, // 格 2 会话详情
+  { ratio: 33, minWidth: 160 }, // 格 3 Agent CLI
   { ratio: 35, minWidth: 240 }, // 格 4 工作流
 ]
+
+/** ISO 时间 → HH:mm:ss */
+const clockText = (iso: string) => {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
 
 /**
  * 项目详情页：四格布局（格 1 会话列表 / 格 2 会话详情 / 格 3 Agent CLI / 格 4 工作流 tab）。
  * activeSessionId 状态在此（三格共享）；编辑项目弹窗（含成员 + ADE 管理）留在此处。
  */
 export default function ProjectDetail({
-  project, projects, folders, onUpdateProject, engine, initialNav, focusJobId,
-  feishu, onUpdateFeishu,
+  project, projects, folders, onUpdateProject, engine, initialNav,
+  currentUserName, settingsAgents, onUpdateAgent, onBindAgent,
+  onDeleteProject, onRefreshAgents,
 }: ProjectDetailProps) {
-  // —— 当前会话（格 1/2/3 共享；默认 order 最大，无会话 null） ——
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(
-    [...project.sessions].sort((a, b) => b.order - a.order)[0]?.id ?? null
-  )
-  const activeSession = project.sessions.find((s) => s.id === activeSessionId) ?? null
-  // —— 当前选中 ADE（格 2 插话归属 / 格 3 agent tab 共享；默认主 agent） ——
-  const [activeAgentId, setActiveAgentId] = useState<string | null>(project.agents[0]?.id ?? null)
-  // 选中 agent 被移除或切项目后不存在时，兜底回主 agent
-  useEffect(() => {
-    if (activeAgentId && !project.agents.some((a) => a.id === activeAgentId)) {
-      setActiveAgentId(project.agents[0]?.id ?? null)
+  // —— 会话：后端持久化（格 1/2/3 共享） ——
+  const [sessions, setSessions] = useState<RuntimeSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(true)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [creatingSession, setCreatingSession] = useState(false)
+  /** 项目是否开启记忆注入（决定会话输入框「记忆」开关是否可用） */
+  const [memoryInjectEnabled, setMemoryInjectEnabled] = useState(true)
+  /** 会话相关操作错误（加载 / 创建 / 改名 / 发送） */
+  const [sessionError, setSessionError] = useState('')
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
+
+  /** 加载项目会话；selectId 指定选中项（新建会话后使用） */
+  const loadSessions = useCallback(async (selectId?: string) => {
+    try {
+      const { sessions: list } = await runtimeApi.projectSessions(project.id)
+      setSessions(list)
+      setActiveSessionId((prev) => {
+        if (selectId) return selectId
+        if (prev && list.some((s) => s.id === prev)) return prev
+        return list[0]?.id ?? null
+      })
+      setSessionError('')
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : '加载会话失败')
+    } finally {
+      setSessionsLoading(false)
     }
-  }, [project.agents, activeAgentId])
-  // auto 会话关联的任务（消息/日志实时取 run）
-  const job = activeSession?.source === 'auto' && activeSession.jobId
-    ? project.autoJobs.find((j) => j.id === activeSession.jobId) ?? null
-    : null
+  }, [project.id])
+
+  useEffect(() => {
+    setSessions([])
+    setActiveSessionId(null)
+    setSessionsLoading(true)
+    void loadSessions()
+  }, [loadSessions])
+
+  useEffect(() => {
+    let alive = true
+    setMemoryInjectEnabled(true)
+    memoryApi.settings(project.id)
+      .then(({ settings }) => {
+        if (alive) setMemoryInjectEnabled(settings.injectMemory)
+      })
+      .catch(() => {
+        if (alive) setMemoryInjectEnabled(true)
+      })
+    return () => { alive = false }
+  }, [project.id])
+
+  /** 项目主 agent（项目内所有 agent 都可参与会话，自动执行用主 agent） */
+  const primaryAgent = project.agents[0] ?? null
+
+  const real = useRealSession(activeSessionId, () => { void loadSessions(); void onRefreshAgents() }, currentUserName)
+
+  // 进入项目 / 开始运行时刷新 agent 状态（工作中 ↔ 空闲由后端按 running 会话派生）
+  useEffect(() => { void onRefreshAgents() }, [project.id, onRefreshAgents])
+  useEffect(() => { if (real.busy) void onRefreshAgents() }, [real.busy, onRefreshAgents])
+
+  // 会话列表轮询（覆盖其他人的新建/改名/状态变化；P1 实时方案的兜底）
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void loadSessions()
+        void onRefreshAgents()
+      }
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [loadSessions, onRefreshAgents])
+
+  // 当前会话 SSE：他人消息、排队/运行状态、标题变化
+  useEffect(() => {
+    if (!activeSessionId) return
+    const es = new EventSource(runtimeApi.sessionStreamUrl(activeSessionId))
+    let reloadTimer: number | null = null
+    const scheduleReload = () => {
+      if (reloadTimer) window.clearTimeout(reloadTimer)
+      reloadTimer = window.setTimeout(() => { void real.reload() }, 250)
+    }
+    es.onmessage = (ev) => {
+      let payload: { type?: string; session?: RuntimeSession; turn?: { status?: string }; sessionId?: string }
+      try { payload = JSON.parse(ev.data) } catch { return }
+      if (payload.type === 'deleted') {
+        es.close()
+        void loadSessions()
+        return
+      }
+      if (payload.session) {
+        setSessions((list) => list.map((s) => (s.id === payload.session!.id ? { ...s, ...payload.session } : s)))
+      }
+      if (payload.type === 'session' || payload.type === 'turn') {
+        scheduleReload()
+        void loadSessions()
+        void onRefreshAgents()
+        void runtimeApi.markSessionRead(activeSessionId)
+          .then(() => setSessions((list) => list.map((s) => (
+            s.id === activeSessionId ? { ...s, unreadCount: 0 } : s
+          ))))
+          .catch(() => {})
+      }
+    }
+    return () => {
+      if (reloadTimer) window.clearTimeout(reloadTimer)
+      es.close()
+    }
+  }, [activeSessionId, real.reload, loadSessions, onRefreshAgents])
 
   const { cellStyle, startResize, reset } = useResizableColumns(COLUMN_SPECS)
+  /** 右侧 Agent CLI 格子是否收起（按钮在会话格右上角） */
+  const [cliCollapsed, setCliCollapsed] = useState(false)
 
-  const [openTabs, setOpenTabs] = useState<NavKey[]>(DEFAULT_OPEN_TABS)
-  const [activeTab, setActiveTab] = useState<NavKey>(
-    initialNav && ALL_TAB_KEYS.includes(initialNav) ? initialNav : 'specs',
+  /** 非研发项目隐藏代码/终端 tab */
+  const visibleItems = useMemo(
+    () => (project.type === 'nondev'
+      ? TAB_ITEMS.filter((t) => t.key !== 'code' && t.key !== 'terminal')
+      : TAB_ITEMS),
+    [project.type],
   )
+  const visibleKeys = useMemo(() => visibleItems.map((t) => t.key as NavKey), [visibleItems])
+  const defaultOpenTabs = useMemo(
+    () => DEFAULT_OPEN_TABS.filter((k) => visibleKeys.includes(k)),
+    [visibleKeys],
+  )
+
+  const [openTabs, setOpenTabs] = useState<NavKey[]>(() => defaultOpenTabs)
+  const [activeTab, setActiveTab] = useState<NavKey>(() => (
+    initialNav && visibleKeys.includes(initialNav) ? initialNav : (defaultOpenTabs[0] ?? 'specs')
+  ))
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState<EditForm>({
     name: '', description: '', folderId: '', status: '规划中', startDate: '', endDate: '',
@@ -127,74 +250,125 @@ export default function ProjectDetail({
   /** 成员添加/编辑弹窗（编辑项目弹窗内）：editId = null 表新增、有值表编辑 */
   const [memberModal, setMemberModal] = useState<'add' | { editId: string } | null>(null)
   const [memberForm, setMemberForm] = useState({ name: '', role: '', permission: '无' })
-  /** ADE 申请弹窗（编辑项目弹窗内） */
-  const [adeApplying, setAdeApplying] = useState(false)
-  const [adeForm, setAdeForm] = useState({ name: '', role: '' })
+  /** 组织成员（设置页已导入的成员，项目成员只能从中选择） */
+  const [orgMembers, setOrgMembers] = useState<OrgMember[]>([])
+  /** 项目 agent 选择弹窗（从设置页 Agent 中挑选） */
+  const [agentPickerOpen, setAgentPickerOpen] = useState(false)
+  /** 删除项目二次确认 */
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   /** ADE 配置弹窗（点 ADE 行打开，复用 AdeSettingsModal） */
   const [adeEditingId, setAdeEditingId] = useState<string | null>(null)
   /** 工作流 tab 打开的运行弹窗任务 id */
   const [wfModalJobId, setWfModalJobId] = useState<string | null>(null)
-  /** 工作流「在会话格打开本步骤会话」请求（stamp 保证重复点击也触发） */
-  const [sessionFocus, setSessionFocus] = useState<{ jobId: string; stamp: number } | null>(null)
-  const activeItem = TAB_ITEMS.find((t) => t.key === activeTab)!
-  /** 已关闭的 tab（+ 菜单数据源；顺序 = 全量顺序） */
-  const closedTabs = ALL_TAB_KEYS.filter((k) => !openTabs.includes(k))
+  const activeItem = visibleItems.find((t) => t.key === activeTab) ?? visibleItems[0]
+  /** 已关闭的 tab（+ 菜单数据源；只包含当前项目可见 tab） */
+  const closedTabs = visibleKeys.filter((k) => !openTabs.includes(k))
   /** 工作流 tab 弹窗对应任务 */
   const wfModalJob = project.autoJobs.find((j) => j.id === wfModalJobId) ?? null
 
-  /* —— 会话选择（格 1 点击 / 通知跳转 / 工作流跳转共用） —— */
+  // 组织成员：项目成员只能从设置页已导入的成员中选择
+  useEffect(() => {
+    let alive = true
+    orgApi.members()
+      .then(({ members }) => { if (alive) setOrgMembers(members) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
 
-  /** 选中会话（清未读） */
+  /* —— 会话操作（格 1 新建 / 选中；数据来自后端） —— */
+
+  /** 选中会话并标记已读 */
   const selectSession = (sessionId: string) => {
     setActiveSessionId(sessionId)
-    const s = project.sessions.find((it) => it.id === sessionId)
-    if (s && s.unread > 0) {
-      onUpdateProject(project.id, (p) => ({
-        ...p,
-        sessions: p.sessions.map((it) => (it.id === sessionId ? { ...it, unread: 0 } : it)),
-      }))
+    setSessions((list) => list.map((s) => (s.id === sessionId ? { ...s, unreadCount: 0 } : s)))
+    void runtimeApi.markSessionRead(sessionId).catch(() => {})
+  }
+
+  /** 新建会话：写入后端并选中（agent 归属项目，不按会话选择） */
+  const handleNewSession = async () => {
+    if (creatingSession || project.agents.length === 0) return
+    setCreatingSession(true)
+    setSessionError('')
+    try {
+      const { session } = await runtimeApi.createProjectSession(project.id)
+      setSessions((list) => [session, ...list])
+      setActiveSessionId(session.id)
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : '新建会话失败')
+    } finally {
+      setCreatingSession(false)
     }
   }
 
-  /** 新建手动会话（置顶 + 切为当前） */
-  const handleNewSession = () => {
-    const session: ProjectSession = {
-      id: `sess${Date.now()}`,
-      name: `新对话 ${project.sessions.filter((s) => s.source === 'manual').length + 1}`,
-      source: 'manual',
-      originText: '手动会话 · 刚刚',
-      messages: [],
-      logs: [],
-      unread: 0,
-      order: (Math.max(0, ...project.sessions.map((s) => s.order))) + 100,
+  /** 会话改名：写回后端 */
+  const handleRenameSession = async (sessionId: string, title: string) => {
+    try {
+      const { session } = await runtimeApi.updateSession(sessionId, { title })
+      setSessions((list) => list.map((s) => (s.id === session.id ? session : s)))
+      setSessionError('')
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : '会话改名失败')
     }
-    onUpdateProject(project.id, (p) => ({ ...p, sessions: [session, ...p.sessions] }))
-    setActiveSessionId(session.id)
   }
 
-  // 通知跳转：切到目标任务对应会话
-  useEffect(() => {
-    if (!focusJobId) return
-    const target = project.sessions.find((s) => s.jobId === focusJobId)
-    if (target) selectSession(target.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusJobId])
+  /** 发送：入队后刷新列表（排队/运行状态与最后活动时间） */
+  const handleSend = async (text: string, useKnowledge = false, useMemory = true) => {
+    await real.send(text, useKnowledge, useMemory)
+    void loadSessions()
+    void onRefreshAgents()
+  }
 
-  // 工作流「在会话格打开本步骤会话」：切到目标任务对应会话（stamp 变更重复触发）
-  useEffect(() => {
-    if (!sessionFocus) return
-    const target = project.sessions.find((s) => s.jobId === sessionFocus.jobId)
-    if (target) selectSession(target.id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionFocus?.stamp])
+  /** 会话消息 → 视图模型（发送者来自后端记录） */
+  const chatMessages: RunMessage[] = useMemo(
+    () => real.messages.map((m) => {
+      const isUser = m.role === 'user'
+      const name = isUser
+        ? (m.userName || '未知成员')
+        : (m.agentName || primaryAgent?.name || 'Agent')
+      const text = m.status === 'canceled'
+        ? '本轮已取消'
+        : m.error
+          ? `执行失败：${m.error}`
+          : m.content
+      return {
+        id: m.id,
+        role: isUser ? ('人' as const) : ('ADE' as const),
+        text,
+        time: clockText(m.at),
+        sender: {
+          name,
+          initial: name.charAt(0).toUpperCase(),
+          color: memberColorOf(name),
+        },
+      }
+    }),
+    [real.messages, primaryAgent],
+  )
+
+  /** 真实事件 → Agent CLI 行 */
+  const terminalLogs: TerminalLog[] = useMemo(
+    () => real.lines.map((l) => ({
+      id: l.key,
+      time: l.at,
+      kind: l.kind as TerminalLog['kind'],
+      text: l.text,
+    })),
+    [real.lines],
+  )
 
   // 外部指定初始导航（如通知跳转）时同步：目标 tab 若已关闭先重开
-  // 注：focusJobId 变化（同项目内再次点击通知）时也强制回到 workflow，即使用户已切到其他 tab
   useEffect(() => {
-    if (!initialNav) return
+    if (!initialNav || !visibleKeys.includes(initialNav)) return
     setOpenTabs((open) => (open.includes(initialNav) ? open : [...open, initialNav]))
     setActiveTab(initialNav)
-  }, [initialNav, focusJobId])
+  }, [initialNav, visibleKeys])
+
+  // 项目类型导致 tab 不可见时，回退到第一个可见 tab
+  useEffect(() => {
+    if (!visibleKeys.includes(activeTab)) {
+      setActiveTab(defaultOpenTabs[0] ?? visibleKeys[0] ?? 'specs')
+    }
+  }, [visibleKeys, activeTab, defaultOpenTabs])
 
   /* —— tab 开关 —— */
 
@@ -255,12 +429,34 @@ export default function ProjectDetail({
 
   const PERMISSIONS = ['无', '管理员', '项目负责人']
 
+  /** 组织权限 → 项目权限默认值 */
+  const projectPermissionOf = (m: OrgMember): string =>
+    m.permission === '所有者' ? '项目负责人' : m.permission === '管理员' ? '管理员' : '无'
+
   const resetMemberForm = () => setMemberForm({ name: '', role: '', permission: '无' })
+
+  /** 可添加的组织成员（排除已在项目中的） */
+  const addableOrgMembers = orgMembers.filter(
+    (m) => !project.members.some((it) => it.name === m.name),
+  )
 
   /** 打开添加成员弹窗 */
   const openAddMember = () => {
-    resetMemberForm()
+    const first = addableOrgMembers[0]
+    setMemberForm(first
+      ? { name: first.name, role: first.role, permission: projectPermissionOf(first) }
+      : { name: '', role: '', permission: '无' })
     setMemberModal('add')
+  }
+
+  /** 选择组织成员：职位与权限按组织成员预填 */
+  const handlePickOrgMember = (name: string) => {
+    const m = orgMembers.find((it) => it.name === name)
+    setMemberForm({
+      name,
+      role: m?.role || '',
+      permission: m ? projectPermissionOf(m) : '无',
+    })
   }
 
   /** 打开编辑成员弹窗（预填） */
@@ -306,36 +502,30 @@ export default function ProjectDetail({
     setMemberModal(null)
   }
 
-  /* —— ADE 管理（编辑项目弹窗内：申请 / 配置弹窗 / 移除；迁自原「项目ADE」tab） —— */
+  /* —— 项目 agent 管理（来源 = 设置页已配置的 Agent，绑定到本项目） —— */
 
   const editingAgent = project.agents.find((a) => a.id === adeEditingId) ?? null
 
-  /** 申请专属 ADE（迁自 AgentsSegment.handleApply） */
-  const handleApplyAde = () => {
-    if (!adeForm.name.trim()) return
-    const a: AdeAgent = {
-      id: `a${Date.now()}`,
-      name: adeForm.name.trim(),
-      role: adeForm.role.trim() || '研发工程师',
-      model: ADE_LLM_BASES[0],
-      status: '空闲',
-      currentTask: '',
-      ...createDefaultAdeConfig(),
-    }
-    onUpdateProject(project.id, (p) => ({ ...p, agents: [...p.agents, a] }))
-    setAdeApplying(false)
-    setAdeForm({ name: '', role: '' })
+  /** 可添加的设置页 Agent（排除已绑定到本项目的） */
+  const addableAgents = settingsAgents.filter(
+    (a) => !project.agents.some((it) => it.id === a.id),
+  )
+
+  /** 添加项目 agent：把设置页 Agent 绑定到本项目 */
+  const handleAddAgent = (agentId: string) => {
+    onBindAgent(agentId, project.id)
+    setAgentPickerOpen(false)
   }
 
-  /** 保存 ADE 配置（AdeSettingsModal 确定） */
+  /** 保存 Agent 配置（写回设置页 Agent） */
   const handleSaveAde = (next: AdeAgent) => {
-    onUpdateProject(project.id, (p) => ({ ...p, agents: p.agents.map((a) => (a.id === next.id ? next : a)) }))
+    onUpdateAgent(next)
     setAdeEditingId(null)
   }
 
-  /** 移除 ADE */
+  /** 从项目移除 agent（只解绑，不删除设置页里的 Agent） */
   const handleRemoveAde = (id: string) => {
-    onUpdateProject(project.id, (p) => ({ ...p, agents: p.agents.filter((a) => a.id !== id) }))
+    onBindAgent(id, null)
     setAdeEditingId(null)
   }
 
@@ -355,22 +545,15 @@ export default function ProjectDetail({
             onUpdateRepos={(repos) => onUpdateProject(project.id, (p) => ({ ...p, repos }))}
           />
         )
+      case 'terminal':
+        return <PtyTerminalPanel projectId={project.id} />
       case 'knowledge':
-        return (
-          <KnowledgePanel
-            documents={project.documents}
-            onUpdateDocuments={(documents) => onUpdateProject(project.id, (p) => ({ ...p, documents }))}
-            knowledge={project.knowledge}
-            onUpdateKnowledge={(knowledge) => onUpdateProject(project.id, (p) => ({ ...p, knowledge }))}
-            feishu={feishu}
-            onUpdateFeishu={onUpdateFeishu}
-          />
-        )
+        return <KnowledgePanel projectId={project.id} />
       case 'memory':
         return (
           <MemoryPanel
-            knowledge={project.knowledge}
-            onUpdateKnowledge={(knowledge) => onUpdateProject(project.id, (p) => ({ ...p, knowledge }))}
+            projectId={project.id}
+            onSettingsChange={(next) => setMemoryInjectEnabled(next.injectMemory)}
           />
         )
       case 'workflow':
@@ -385,7 +568,6 @@ export default function ProjectDetail({
             onApprove={(jobId) => engine.approve(project.id, jobId)}
             onReject={(jobId) => engine.reject(project.id, jobId)}
             onOpenRunModal={(jobId) => setWfModalJobId(jobId)}
-            onOpenSession={(jobId) => setSessionFocus({ jobId, stamp: Date.now() })}
           />
         )
       case 'efficiency':
@@ -434,8 +616,13 @@ export default function ProjectDetail({
         <div className="detail-cell" style={cellStyle(0)}>
           <SessionRail
             project={project}
-            sessions={project.sessions}
+            sessions={sessions}
             activeSessionId={activeSessionId}
+            canCreate={project.agents.length > 0}
+            creating={creatingSession}
+            loading={sessionsLoading}
+            error={sessionError}
+            currentUserName={currentUserName}
             onSelect={selectSession}
             onNewSession={handleNewSession}
             onOpenEdit={openEditModal}
@@ -445,27 +632,42 @@ export default function ProjectDetail({
         <div className="detail-cell" style={cellStyle(1)}>
           <ChatPane
             project={project}
-            activeSession={activeSession}
-            job={job}
-            activeAgentId={activeAgentId}
-            onUpdateProject={onUpdateProject}
-            engine={engine}
+            session={activeSession}
+            agent={primaryAgent}
+            messages={chatMessages}
+            busy={real.busy}
+            queued={real.queued}
+            queuePosition={real.queuePosition}
+            error={real.error}
+            currentUserName={currentUserName}
+            hasMore={real.hasMore}
+            loadingOlder={real.loadingOlder}
+            onLoadOlder={real.loadOlder}
+            onSend={handleSend}
+            onRename={handleRenameSession}
+            memoryInjectEnabled={memoryInjectEnabled}
+            cliOpen={!cliCollapsed}
+            onToggleCli={() => setCliCollapsed((v) => !v)}
           />
         </div>
         {renderResizer(1)}
-        <div className="detail-cell" style={cellStyle(2)}>
-          <TerminalPane
-            project={project}
-            activeSession={activeSession}
-            activeAgentId={activeAgentId}
-            onSelectAgent={(id) => setActiveAgentId(id)}
-          />
-        </div>
-        {renderResizer(2)}
+        {!cliCollapsed && (
+          <>
+            <div className="detail-cell" style={cellStyle(2)}>
+              <TerminalPane
+                session={activeSession}
+                agent={primaryAgent}
+                logs={terminalLogs}
+                busy={real.busy}
+              />
+            </div>
+            {renderResizer(2)}
+          </>
+        )}
         {/* 格 4：项目配置（同行走比例分配，不再单独 flex 吸收） */}
         <div className="detail-cell detail-config" style={cellStyle(3)}>
           <ClosableTabs
-            items={TAB_ITEMS}
+            items={visibleItems}
             openKeys={openTabs}
             activeKey={activeTab}
             closedKeys={closedTabs}
@@ -473,8 +675,8 @@ export default function ProjectDetail({
             onClose={(key) => handleCloseTab(key as NavKey)}
             onReopen={(key) => handleReopenTab(key as NavKey)}
           />
-          {/* 工作流为画布型面板：去 padding 贴边渲染 */}
-          <div className={`detail-panel${activeTab === 'workflow' ? ' bare' : ''}`}>
+          {/* 工作流 / 终端为画布/终端型面板：去 padding 贴边渲染 */}
+          <div className={`detail-panel${activeTab === 'workflow' || activeTab === 'terminal' ? ' bare' : ''}`}>
             {renderPanel()}
           </div>
         </div>
@@ -519,6 +721,14 @@ export default function ProjectDetail({
               value={editForm.description}
               placeholder="如 Loom Web 端研发"
               onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+            />
+          </ModalField>
+          <ModalField label="项目类型">
+            <input
+              className="field-input"
+              value={project.type === 'nondev' ? '非研发项目' : '研发项目'}
+              disabled
+              readOnly
             />
           </ModalField>
           <ModalField label="所属文件夹">
@@ -568,7 +778,7 @@ export default function ProjectDetail({
             </div>
             <div className="edit-member-list">
               {project.members.map((m) => {
-                const isMe = m.name === CURRENT_USER.name
+                const isMe = m.name === currentUserName
                 return (
                   <div key={m.id} className="edit-member-row">
                     <span className="edit-member-avatar" style={{ background: memberColorOf(m.name) }}>
@@ -580,7 +790,7 @@ export default function ProjectDetail({
                         {isMe && <span className="edit-member-me">我</span>}
                       </span>
                       <span className="edit-member-sub">
-                        {m.permission ? `${m.role} · ${m.permission}` : m.role}
+                        {[m.role, m.permission].filter(Boolean).join(' · ')}
                       </span>
                     </span>
                     <button
@@ -596,21 +806,29 @@ export default function ProjectDetail({
             </div>
           </div>
 
-          {/* 项目 ADE：申请 + 配置弹窗（迁自原「项目ADE」tab） */}
+          {/* 项目 agent：来源 = 设置页已配置的 Agent（绑定到本项目） */}
           <div className="modal-field">
             <div className="modal-field-label-row">
-              <div className="modal-field-label">项目 ADE</div>
+              <div className="modal-field-label">项目 agent</div>
               <button
                 type="button"
                 className="member-add-btn"
-                onClick={() => { setAdeApplying(true); setAdeForm({ name: '', role: '' }) }}
+                onClick={() => setAgentPickerOpen(true)}
+                disabled={addableAgents.length === 0}
+                title={addableAgents.length === 0
+                  ? (settingsAgents.length === 0 ? '设置页还没有 Agent，请先新建' : '设置页的 Agent 都已接入本项目')
+                  : '从设置页已配置的 Agent 中添加'}
               >
-                ＋ 申请专属ADE
+                ＋ 添加 agent
               </button>
             </div>
             <div className="edit-member-list">
               {project.agents.length === 0 && (
-                <div className="edit-ade-empty">暂无 ADE 接入本项目</div>
+                <div className="edit-ade-empty">
+                  {settingsAgents.length === 0
+                    ? '设置页还没有 Agent，先到「设置 › Agent 设置」新建'
+                    : '暂无 agent 接入本项目'}
+                </div>
               )}
               {project.agents.map((a) => {
                 const busy = a.status === '工作中'
@@ -620,7 +838,7 @@ export default function ProjectDetail({
                     type="button"
                     className="edit-ade-row"
                     onClick={() => { if (!busy) setAdeEditingId(a.id) }}
-                    title={busy ? '工作中的 ADE 不可修改' : '点击配置 ADE'}
+                    title={busy ? '工作中的 agent 不可修改' : '点击配置 agent'}
                   >
                     <span className="edit-member-avatar edit-ade-avatar">A</span>
                     <span className="edit-member-text">
@@ -637,34 +855,74 @@ export default function ProjectDetail({
               })}
             </div>
           </div>
+
+          {/* 删除项目（软删除） */}
+          <div className="modal-field">
+            <button
+              type="button"
+              className="text-btn danger"
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              删除项目
+            </button>
+            <div className="form-tips">
+              <span className="form-tips-icon">i</span>
+              <span className="form-tips-text">
+                软删除：项目将从协作中心移除，成员 / 会话 / Agent 等数据保留在服务端。
+              </span>
+            </div>
+          </div>
         </FormModal>
       )}
 
-      {/* ADE 申请弹窗（编辑项目弹窗之上） */}
-      {adeApplying && (
+      {/* 删除项目二次确认 */}
+      {deleteConfirmOpen && (
         <FormModal
-          title="申请专属ADE"
-          confirmText="申请"
-          confirmDisabled={!adeForm.name.trim()}
-          onConfirm={handleApplyAde}
-          onClose={() => { setAdeApplying(false); setAdeForm({ name: '', role: '' }) }}
+          title="删除项目"
+          confirmText="删除"
+          confirmDanger
+          onConfirm={() => onDeleteProject(project.id)}
+          onClose={() => setDeleteConfirmOpen(false)}
         >
-          <ModalField label="ADE 名称">
-            <input
-              className="field-input"
-              value={adeForm.name}
-              placeholder="如 研发工程师ADE"
-              onChange={(e) => setAdeForm({ ...adeForm, name: e.target.value })}
-            />
-          </ModalField>
-          <ModalField label="角色">
-            <input
-              className="field-input"
-              value={adeForm.role}
-              placeholder="研发工程师/测试工程师…"
-              onChange={(e) => setAdeForm({ ...adeForm, role: e.target.value })}
-            />
-          </ModalField>
+          <p className="form-hint">
+            确定删除项目「{project.name}」吗？删除后将不再出现在协作中心（软删除，服务端数据保留）。
+          </p>
+        </FormModal>
+      )}
+
+      {/* 项目 agent 选择弹窗（从设置页已配置的 Agent 中添加） */}
+      {agentPickerOpen && (
+        <FormModal
+          title="添加项目 agent"
+          confirmText="关闭"
+          onConfirm={() => setAgentPickerOpen(false)}
+          onClose={() => setAgentPickerOpen(false)}
+        >
+          {addableAgents.length === 0 ? (
+            <p className="form-hint">设置页没有可添加的 Agent（已全部接入本项目，或尚未新建）。</p>
+          ) : (
+            <div className="edit-member-list">
+              {addableAgents.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="edit-ade-row"
+                  onClick={() => handleAddAgent(a.id)}
+                  title="添加到本项目"
+                >
+                  <span className="edit-member-avatar edit-ade-avatar">A</span>
+                  <span className="edit-member-text">
+                    <span className="edit-member-name">{a.name}</span>
+                    <span className="edit-member-sub">{a.role} · {a.model}</span>
+                  </span>
+                  <span className="settings-row-right">
+                    <StatusBadge tone="neutral">{a.status}</StatusBadge>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="form-hint">Agent 在「设置 › Agent 设置」中创建与配置，这里只负责把它接入当前项目。</p>
         </FormModal>
       )}
 
@@ -687,15 +945,31 @@ export default function ProjectDetail({
           onConfirm={handleSaveMember}
           onClose={() => { setMemberModal(null); resetMemberForm() }}
         >
-          <ModalField label="姓名">
-            <input
-              className="field-input"
-              value={memberForm.name}
-              placeholder={memberModal === 'add' ? '如 zhang' : '姓名不可修改'}
-              disabled={memberModal !== 'add'}
-              onChange={(e) => setMemberForm({ ...memberForm, name: e.target.value })}
-            />
-          </ModalField>
+          {memberModal === 'add' ? (
+            <ModalField label="成员">
+              {addableOrgMembers.length > 0 ? (
+                <select
+                  className="field-select"
+                  value={memberForm.name}
+                  onChange={(e) => handlePickOrgMember(e.target.value)}
+                >
+                  {addableOrgMembers.map((m) => (
+                    <option key={m.id} value={m.name}>{m.name}（{m.permission}）</option>
+                  ))}
+                </select>
+              ) : (
+                <p className="form-hint">
+                  {orgMembers.length === 0
+                    ? '设置页还没有成员，请先到「设置 › 成员管理」从飞书导入成员。'
+                    : '设置页已导入的成员都已在本项目中。'}
+                </p>
+              )}
+            </ModalField>
+          ) : (
+            <ModalField label="姓名">
+              <input className="field-input" value={memberForm.name} disabled />
+            </ModalField>
+          )}
           <ModalField label="职位">
             <input
               className="field-input"
