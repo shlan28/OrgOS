@@ -1,0 +1,102 @@
+/* Agent 详情弹窗：左侧可点击目录 + 右侧编辑区 */
+
+.ade-detail-modal {
+  width: 720px;
+}
+
+.ade-detail {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  min-height: 360px;
+  max-height: min(520px, 62vh);
+}
+
+/* 左侧目录 */
+
+.ade-detail-nav {
+  width: 140px;
+  flex-shrink: 0;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--row-divider);
+  overflow-y: auto;
+}
+
+.ade-detail-nav-item {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ade-detail-nav-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+}
+
+.ade-detail-nav-item.active {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* 右侧编辑区 */
+
+.ade-detail-panel {
+  flex: 1;
+  min-width: 0;
+  padding: 18px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ade-detail-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ade-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ade-detail-field-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ADE.md：输入框撑满右侧剩余高度 */
+.ade-detail-field.fill {
+  flex: 1;
+  min-height: 0;
+}
+
+.ade-detail-field.fill .ade-detail-md {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.ade-detail-field .field-input,
+.ade-detail-field .field-select {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.ade-detail-md {
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  resize: vertical;
+}

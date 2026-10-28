@@ -55,6 +55,26 @@ export const CodeIcon = (p: IconProps) =>
     </>
   ))
 
+/** 终端图标（Agent 控制台） */
+export const TerminalIcon = (p: IconProps) =>
+  base(p, (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <polyline points="7.5 9.5 10.5 12 7.5 14.5" />
+      <line x1="13" y1="15" x2="16.5" y2="15" />
+    </>
+  ))
+
+/** 退出登录（门 + 左箭头） */
+export const LogoutIcon = (p: IconProps) =>
+  base(p, (
+    <>
+      <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+      <polyline points="10 8 6 12 10 16" />
+      <line x1="6" y1="12" x2="15" y2="12" />
+    </>
+  ))
+
 /** 铅笔图标（新对话） */
 export const PencilIcon = (p: IconProps) =>
   base(p, (
@@ -74,6 +94,14 @@ export const SlidersIcon = (p: IconProps) =>
       <circle cx="15" cy="12" r="2.2" fill="var(--icon-fill, #fff)" />
       <line x1="4" y1="17" x2="20" y2="17" />
       <circle cx="7.5" cy="17" r="2.2" fill="var(--icon-fill, #fff)" />
+    </>
+  ))
+
+/** 筛选图标（漏斗） */
+export const FilterIcon = (p: IconProps) =>
+  base(p, (
+    <>
+      <path d="M3.5 5h17l-6.5 7.5V19l-4 1.5v-8L3.5 5z" />
     </>
   ))
 

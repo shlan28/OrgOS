@@ -216,3 +216,120 @@
   text-overflow: ellipsis;
   flex: 1;
 }
+
+/* 搜索与「我的」过滤 */
+.rail-tools {
+  display: flex;
+  gap: 4px;
+  margin: 8px 8px 6px;
+  align-items: center;
+}
+
+.rail-search {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--main-bg);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+}
+
+.rail-search::placeholder {
+  color: #b0b0b0;
+}
+
+/* 筛选按钮与下拉 */
+.rail-tools {
+  position: relative;
+}
+
+.rail-filter-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--main-bg);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rail-filter-btn:hover {
+  color: var(--text-primary);
+}
+
+.rail-filter-btn.on,
+.rail-filter-btn.open {
+  background: var(--status-info-bg);
+  border-color: var(--status-info);
+  color: var(--status-info);
+}
+
+.rail-filter-menu {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  min-width: 132px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  z-index: 30;
+}
+
+.rail-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.rail-filter-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.rail-filter-item.active {
+  color: var(--status-info);
+}
+
+.rail-filter-check {
+  width: 12px;
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* 列表空态 / 加载态 */
+.rail-hint {
+  margin: 10px 10px 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* 会话操作错误 */
+.rail-error {
+  margin: 8px 10px 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--status-danger);
+}

@@ -340,6 +340,10 @@ body {
   cursor: not-allowed;
 }
 
+.btn-primary.danger {
+  background: var(--status-danger);
+}
+
 /* 次按钮（白底描边，与主按钮同高同圆角） */
 .btn-secondary {
   border: 1px solid var(--border);

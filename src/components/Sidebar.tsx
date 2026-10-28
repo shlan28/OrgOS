@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import SegmentedControl from './SegmentedControl'
 import UserMenu from './UserMenu'
-import { CodeIcon, FolderIcon, HomeIcon, PencilIcon, ProjectsIcon, SlidersIcon } from './icons'
+import { CodeIcon, FolderIcon, HomeIcon, PencilIcon, ProjectsIcon } from './icons'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -12,10 +12,18 @@ interface SidebarProps {
   onOpenProjectCenter: () => void
   /** 用户菜单「设置」：打开设置页 */
   onOpenSettings: () => void
+  /** 退出登录 */
+  onLogout: () => void
+  /** 当前登录用户名与头像字母 */
+  userName: string
+  userInitial: string
 }
 
 /** 左侧边栏：分段控件 + 菜单 + 项目区 + 用户区（点击弹向上菜单 → 设置） */
-export default function Sidebar({ projectCenterActive, onNewChat, onOpenProjectCenter, onOpenSettings }: SidebarProps) {
+export default function Sidebar({
+  projectCenterActive, onNewChat, onOpenProjectCenter, onOpenSettings,
+  onLogout, userName, userInitial,
+}: SidebarProps) {
   const [tab, setTab] = useState('code')
   /** 用户名向上菜单开关 */
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -43,16 +51,12 @@ export default function Sidebar({ projectCenterActive, onNewChat, onOpenProjectC
         <nav className="sidebar-menu">
           <button
             type="button"
-            className={`menu-item${projectCenterActive ? '' : ' active'}`}
+            className={`menu-item${!projectCenterActive ? ' active' : ''}`}
             onClick={onNewChat}
             title="回到新对话（首页会话框）"
           >
             <PencilIcon size={15} />
             <span>新对话</span>
-          </button>
-          <button type="button" className="menu-item">
-            <SlidersIcon size={15} />
-            <span>定制</span>
           </button>
           <button
             type="button"
@@ -60,7 +64,7 @@ export default function Sidebar({ projectCenterActive, onNewChat, onOpenProjectC
             onClick={onOpenProjectCenter}
           >
             <ProjectsIcon size={15} />
-            <span>项目中心</span>
+            <span>协作中心</span>
           </button>
         </nav>
 
@@ -81,6 +85,10 @@ export default function Sidebar({ projectCenterActive, onNewChat, onOpenProjectC
               setUserMenuOpen(false)
               onOpenSettings()
             }}
+            onLogout={() => {
+              setUserMenuOpen(false)
+              onLogout()
+            }}
           />
         )}
         <button
@@ -91,8 +99,8 @@ export default function Sidebar({ projectCenterActive, onNewChat, onOpenProjectC
           title="用户菜单"
           onClick={() => setUserMenuOpen((v) => !v)}
         >
-          <span className="avatar">S</span>
-          <span className="username">shilu</span>
+          <span className="avatar">{userInitial}</span>
+          <span className="username">{userName}</span>
           <span className="user-chev">⌃</span>
         </button>
       </div>

@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import type { ComponentProps } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { AutoJob, RunMessage } from '../../data/projects'
 import { CURRENT_USER, ADE_SENDER } from '../../data/projects'
 import './ChatMessage.css'
@@ -24,6 +27,14 @@ interface ChatMessageProps {
  * - 步骤完成消息带阶段性结果块（产物文件 + 跳转会话）。
  */
 
+/** markdown 里的链接统一新窗口打开 */
+function MarkdownLink({ node, ...rest }: ComponentProps<'a'> & { node?: unknown }) {
+  void node
+  return <a {...rest} target="_blank" rel="noreferrer" />
+}
+
+const MD_COMPONENTS = { a: MarkdownLink }
+
 /** 文本按 @提及 分段渲染（@名字 = 蓝色高亮） */
 const renderText = (text: string) => {
   const parts = text.split(/(@[^\s@，。；、！？]+)/g)
@@ -39,6 +50,12 @@ export default function ChatMessage({
   message, prevMessage, job, waiting, onApprove, onReject, onSubmit,
 }: ChatMessageProps) {
   const [values, setValues] = useState<Record<string, string>>({})
+  /** Agent 回复按 markdown 渲染；人消息保持纯文本 + @提及高亮 */
+  const markdown = useMemo(() => (
+    <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>
+      {message.text}
+    </ReactMarkdown>
+  ), [message.text])
 
   if (message.role === '系统') {
     return <div className="run-msg system">{message.text}</div>
@@ -53,7 +70,7 @@ export default function ChatMessage({
   if (message.role === '人') {
     return (
       <div className="run-msg-row mine">
-        {showName && <span className="run-msg-name mine">{sender.name}</span>}
+        {showName && <span className="run-msg-name mine">{message.time} · {sender.name}</span>}
         <div className="run-msg-content mine">
           <div className="run-msg-bubble mine">{renderText(message.text)}</div>
           <span
@@ -75,7 +92,7 @@ export default function ChatMessage({
 
   return (
     <div className="run-msg-row">
-      {showName && <span className="run-msg-name">{sender.name}</span>}
+      {showName && <span className="run-msg-name">{sender.name} · {message.time}</span>}
       <div className="run-msg-content">
         <span
           className="run-msg-avatar"
@@ -86,7 +103,7 @@ export default function ChatMessage({
         </span>
         <div className={`run-msg-bubble ade${hasActions || hasForm ? ' gate' : ''}`}>
           {hasActions || hasForm ? <div className="run-msg-gate-title">⚠ {job?.currentRun?.gate?.title ?? '需要你的输入'}</div> : null}
-          <div className="run-msg-text">{renderText(message.text)}</div>
+          <div className="run-msg-text markdown">{markdown}</div>
 
           {/* 阶段性结果块：摘要 + 产物文件（带下划线可跳转）+ 跳转会话 */}
           {hasResult && (

@@ -101,8 +101,6 @@ interface WorkflowPanelProps {
   onReject: (jobId: string) => void
   /** 打开该任务的运行详情弹窗（复用 RunModal） */
   onOpenRunModal: (jobId: string) => void
-  /** 在左栏打开本步骤（任务）对应会话 */
-  onOpenSession: (jobId: string) => void
   /** 新建工作流（跳转/回调，占位） */
   onCreateWorkflow?: () => void
 }
@@ -123,7 +121,7 @@ const runToneOf = (status: string | undefined): 'run' | 'wait' | 'idle' => {
  * - 底部状态条：状态 + 进度 + 步骤。
  */
 export default function WorkflowPanel({
-  jobs, onRun, onPause, onStop, onResume, onRestart, onApprove, onReject, onOpenRunModal, onOpenSession, onCreateWorkflow,
+  jobs, onRun, onPause, onStop, onResume, onRestart, onApprove, onReject, onOpenRunModal, onCreateWorkflow,
 }: WorkflowPanelProps) {
   const [jobId, setJobId] = useState(jobs[0]?.id ?? '')
   const [selectedStep, setSelectedStep] = useState(0) // 选中节点下标（0 = 触发器）
@@ -497,12 +495,6 @@ export default function WorkflowPanel({
                       )}
                     </div>
                   )}
-
-                  <div className="wf-insp-sec">
-                    <button type="button" className="wf-insp-btn" onClick={() => onOpenSession(job.id)}>
-                      在左栏打开本步骤会话
-                    </button>
-                  </div>
                 </>
               )}
             </div>

@@ -1,16 +1,18 @@
 import { useEffect, useRef } from 'react'
-import { GearIcon } from './icons'
+import { GearIcon, LogoutIcon } from './icons'
 
 interface UserMenuProps {
   /** 点击「设置」 */
   onOpenSettings: () => void
+  /** 退出登录 */
+  onLogout: () => void
 }
 
 /**
  * 侧边栏用户名向上弹出菜单（单项「设置」）。
  * 打开/关闭由父组件 Sidebar 控制（菜单开启态下用户区显示高亮）。
  */
-export default function UserMenu({ onOpenSettings }: UserMenuProps) {
+export default function UserMenu({ onOpenSettings, onLogout }: UserMenuProps) {
   const ref = useRef<HTMLDivElement>(null)
 
   /** Escape 关闭 / 点击菜单外部关闭（同 Dropdown 范式） */
@@ -46,6 +48,15 @@ export default function UserMenu({ onOpenSettings }: UserMenuProps) {
       >
         <GearIcon size={14} />
         <span>设置</span>
+      </button>
+      <button
+        type="button"
+        className="um-item"
+        role="menuitem"
+        onClick={onLogout}
+      >
+        <LogoutIcon size={14} />
+        <span>退出登录</span>
       </button>
     </div>
   )

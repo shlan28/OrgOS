@@ -11,7 +11,7 @@ interface TitleBarProps {
   onGoToNotification: (n: Notification) => void
 }
 
-/** 窗口标题栏：交通灯按钮 + 应用名 + 通知铃铛 + 侧边栏切换图标 */
+/** 窗口标题栏：交通灯按钮 + 通知铃铛 + 侧边栏切换图标 */
 export default function TitleBar({
   onToggleSidebar,
   notifications,
@@ -26,8 +26,7 @@ export default function TitleBar({
         <span className="tl minimize" />
         <span className="tl maximize" />
       </div>
-      <span className="app-name">Loom</span>
-      <div className="titlebar-right">
+      <div className="titlebar-actions">
         <Notifications
           notifications={notifications}
           onApprove={onApproveNotification}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import type { OrgMemberData, UserSettings } from '../data/settings'
+import type { UserSettings } from '../data/settings'
+import type { RuntimeInfo } from '../lib/runtimeApi'
 import AgentSettingsPanel from './settings/AgentSettingsPanel'
 import InviteMembersPanel from './settings/InviteMembersPanel'
 import { RobotIcon, UsersIcon } from './icons'
@@ -23,10 +24,10 @@ interface SettingsPageProps {
   settings: UserSettings
   /** 更新用户设置（局部 patch） */
   onUpdateSettings: (updater: (s: UserSettings) => UserSettings) => void
-  /** 组织成员数据 */
-  org: OrgMemberData
-  /** 更新组织成员数据（局部 patch） */
-  onUpdateOrg: (updater: (d: OrgMemberData) => OrgMemberData) => void
+  /** 运行时状态（DeepSeek Harness） */
+  runtime: RuntimeInfo | null
+  onSaveRuntime: (patch: { deepseekApiKey?: string; deepseekBaseUrl?: string }) => Promise<void>
+  onRefreshRuntime: () => void
 }
 
 /**
@@ -35,7 +36,8 @@ interface SettingsPageProps {
  * 数据与写操作全部由 App 注入；面板组件零持久化。
  */
 export default function SettingsPage({
-  section, onChangeSection, onClose, settings, onUpdateSettings, org, onUpdateOrg,
+  section, onChangeSection, onClose, settings, onUpdateSettings,
+  runtime, onSaveRuntime, onRefreshRuntime,
 }: SettingsPageProps) {
   /** Esc 关闭（无浮层时） */
   useEffect(() => {
@@ -83,15 +85,16 @@ export default function SettingsPage({
 
         {/* 右内容 */}
         <div className="settings-content">
-          {section === 'agent' && <AgentSettingsPanel settings={settings} onUpdateSettings={onUpdateSettings} />}
-          {section === 'invite' && (
-            <InviteMembersPanel
+          {section === 'agent' && (
+            <AgentSettingsPanel
               settings={settings}
               onUpdateSettings={onUpdateSettings}
-              org={org}
-              onUpdateOrg={onUpdateOrg}
+              runtime={runtime}
+              onSaveRuntime={onSaveRuntime}
+              onRefreshRuntime={onRefreshRuntime}
             />
           )}
+          {section === 'invite' && <InviteMembersPanel />}
         </div>
       </div>
     </div>

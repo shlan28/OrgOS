@@ -12,7 +12,7 @@
 .traffic-lights {
   display: flex;
   gap: 8px;
-  margin-right: 18px;
+  margin-right: 10px;
 }
 
 /* 红绿灯圆点（作用域化到 .traffic-lights 内——裸类 .tl 曾与 TerminalPane 的终端轨迹 .tl 冲突导致布局塌陷） */
@@ -35,21 +35,8 @@
   background: #28c840;
 }
 
-.app-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: 0.2px;
-}
-
-.titlebar-icon:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: var(--text-primary);
-}
-
-/* 标题栏右侧操作区（通知 + 侧边栏切换） */
-.titlebar-right {
-  margin-left: auto;
+/* 标题栏左侧操作区（通知 + 侧边栏切换） */
+.titlebar-actions {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -66,4 +53,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.titlebar-icon:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
 }

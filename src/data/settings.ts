@@ -55,57 +55,6 @@ export interface FeishuSettings {
   authorizedAt: string
 }
 
-/** 企业授权是否已连接（凭证已保存且非空；保存动作即连接验证，Mock 不失败） */
-export const feishuCorpConnected = (f: FeishuSettings): boolean =>
-  f.appId.trim().length > 0 && f.appSecret.trim().length > 0
-
-/* —— 成员管理（组织级） —— */
-
-/** 组织成员（与项目 Member 结构对齐，去掉项目语义） */
-export interface OrgMember {
-  id: string
-  name: string
-  initial: string
-  /** 职位：前端/后端/测试/产品…（导入成员 = 飞书职位） */
-  role: string
-  /** 组织权限：所有者 / 管理员 / 成员 */
-  permission: '所有者' | '管理员' | '成员'
-  online: boolean
-  lastActive: string
-}
-
-/** 飞书通讯录联系人（「从飞书导入成员」弹窗数据源） */
-export interface FeishuContact {
-  id: string
-  name: string
-  /** 部门 */
-  department: string
-  /** 职位（导入后作为组织成员 role） */
-  title: string
-}
-
-/** 飞书通讯录 Mock（与现有组织成员重叠 2 人演示「已是成员」置灰态） */
-export const FEISHU_CONTACTS: FeishuContact[] = [
-  { id: 'fc1', name: 'wang', department: '研发部', title: '后端工程师' },
-  { id: 'fc2', name: 'chen', department: '测试部', title: '测试工程师' },
-  { id: 'fc3', name: '张伟', department: '产品部', title: '产品经理' },
-  { id: 'fc4', name: '李娜', department: '研发部', title: '前端工程师' },
-  { id: 'fc5', name: '刘强', department: '研发部', title: '后端工程师' },
-  { id: 'fc6', name: '孙敏', department: '测试部', title: '测试工程师' },
-  { id: 'fc7', name: '周杰', department: '设计部', title: 'UI 设计师' },
-  { id: 'fc8', name: '吴霞', department: '运营部', title: '运营专员' },
-  { id: 'fc9', name: '郑凯', department: '研发部', title: '算法工程师' },
-  { id: 'fc10', name: '冯雪', department: '产品部', title: '产品经理' },
-  { id: 'fc11', name: '韩磊', department: '研发部', title: '架构师' },
-  { id: 'fc12', name: '唐悦', department: '测试部', title: '测试工程师' },
-]
-
-/** 组织成员页数据（App 层 state，不持久化） */
-export interface OrgMemberData {
-  /** 组织成员列表 */
-  orgMembers: OrgMember[]
-}
-
 /* —— 工具方法 —— */
 
 /** 当前时间格式化（YYYY-MM-DD HH:mm） */
@@ -161,7 +110,7 @@ export function createDefaultUserSettings(): UserSettings {
   return {
     myAdes,
     defaultAdeId: myAdes[0].id,
-    model: ADE_LLM_BASES[0],
+    model: 'deepseek-chat',
     multimodalModel: ADE_MULTIMODAL_MODELS[0],
     collabModel: '',
     knowledgeBases: ['研发规范库'],
@@ -175,19 +124,6 @@ export function createDefaultUserSettings(): UserSettings {
       authorizedAccount: CURRENT_USER.name,
       authorizedAt: '',
     },
-  }
-}
-
-/** 邀请（链接/邮箱）已整体删除，改「从飞书导入成员」；组织成员数据初值 */
-export function createDefaultOrgMemberData(): OrgMemberData {
-  return {
-    orgMembers: [
-      { id: 'om1', name: 'shilu', initial: 'S', role: '平台', permission: '所有者', online: true, lastActive: '活跃于 10 分钟前' },
-      { id: 'om2', name: 'luyu', initial: 'L', role: '前端', permission: '管理员', online: false, lastActive: '活跃于 1 小时前' },
-      { id: 'om3', name: 'wang', initial: 'W', role: '后端', permission: '成员', online: true, lastActive: '活跃于 30 分钟前' },
-      { id: 'om4', name: 'chen', initial: 'C', role: '测试', permission: '成员', online: false, lastActive: '活跃于 昨天' },
-      { id: 'om5', name: 'zhao', initial: 'Z', role: '产品', permission: '成员', online: false, lastActive: '活跃于 3 天前' },
-    ],
   }
 }
 
