@@ -100,6 +100,8 @@ export default function KbIndexPanel({ projectId }: KbIndexPanelProps) {
     baseUrl: '', model: '', dim: 0, glossary: '', visionModel: '', rerankModel: '', hasKey: false, apiKey: '',
   })
   const [savingConfig, setSavingConfig] = useState(false)
+  /** 重建索引确认弹窗 */
+  const [rebuildConfirm, setRebuildConfirm] = useState(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -378,7 +380,7 @@ export default function KbIndexPanel({ projectId }: KbIndexPanelProps) {
           <button type="button" className="kbi-act primary" onClick={() => { setSearchOpen(true); setResult(null) }}>
             检索测试
           </button>
-          <button type="button" className="kbi-act" onClick={() => void rebuildAll()}>重建索引</button>
+          <button type="button" className="kbi-act" onClick={() => setRebuildConfirm(true)}>重建索引</button>
           <button type="button" className="kbi-act" onClick={openConfig}>索引设置</button>
         </span>
       </div>
@@ -621,6 +623,42 @@ export default function KbIndexPanel({ projectId }: KbIndexPanelProps) {
                 </>
               )}
               {!searching && !result && <div className="kbi-ret-status">输入问题后回车，查看命中片段与来源。</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 重建索引确认：提示影响范围与费用 */}
+      {rebuildConfirm && (
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setRebuildConfirm(false) }}>
+          <div className="modal-box kbi-confirm-modal" role="dialog" aria-modal="true" aria-label="确认重建索引">
+            <div className="modal-head">
+              <span className="modal-title">重建索引</span>
+              <button type="button" className="modal-close" aria-label="关闭" onClick={() => setRebuildConfirm(false)}>×</button>
+            </div>
+            <div className="kbi-confirm-body">
+              <p>
+                将重新切分并刷新本项目 <b>{stats.included}</b> 篇已收录文档的索引（当前 <b>{status?.chunks.chunks ?? 0}</b> 个片段，嵌入模型 {status?.config.model ? <b>{status.config.model}</b> : '未配置'}）。
+              </p>
+              <ul>
+                <li>内容没有变化的片段会按哈希复用，<b>不会重复向量化</b>，通常不产生额外费用。</li>
+                <li>若刚切换过嵌入模型，或文档正文有更新，对应片段会重新调用嵌入接口，<b>按片段数计费</b>。</li>
+                {(status?.chunks.embeddingStale ?? 0) > 0 && (
+                  <li>当前有 <b>{status?.chunks.embeddingStale}</b> 个片段属于旧模型，重建时会重新向量化。</li>
+                )}
+                <li>重建期间检索仍可用；单个文档处理过程中会短暂显示「待索引」。</li>
+              </ul>
+              <p className="kbi-confirm-hint">参考耗时：537 个片段全量重建约 12 秒（已配置嵌入模型）；未配置模型时只重切分，通常 1–2 秒。</p>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="text-btn" onClick={() => setRebuildConfirm(false)}>取消</button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => { setRebuildConfirm(false); void rebuildAll() }}
+              >
+                继续重建
+              </button>
             </div>
           </div>
         </div>

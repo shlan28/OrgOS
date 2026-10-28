@@ -8,7 +8,7 @@ import {
   type SyncDoc,
   type SyncRun,
 } from '../../lib/docSyncApi'
-import { DocIcon, ChevronRightIcon, FolderIcon, ExternalIcon, DownloadIcon, PlusIcon } from '../icons'
+import { DocIcon, ChevronRightIcon, FolderIcon, ExternalIcon, DownloadIcon, PlusIcon, SearchIcon } from '../icons'
 import './KbIndexPanel.css'
 import './DocLibraryView.css'
 
@@ -55,7 +55,7 @@ const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.last
 export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
   const [sources, setSources] = useState<DocSource[]>([])
   const [docs, setDocs] = useState<SyncDoc[]>([])
-  const [activeSource, setActiveSource] = useState('')
+  const [keyword, setKeyword] = useState('')
   const [selectedPath, setSelectedPath] = useState('')
   const [collapsed, setCollapsed] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -74,7 +74,7 @@ export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
     try {
       const [sourceRes, docRes] = await Promise.all([
         docSyncApi.sources(projectId),
-        docSyncApi.docs(projectId, { sourceId: activeSource || undefined }),
+        docSyncApi.docs(projectId),
       ])
       setSources(sourceRes.sources)
       setDocs(docRes.docs)
@@ -86,17 +86,12 @@ export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
     } catch (err) {
       setError(errText(err))
     }
-  }, [projectId, activeSource])
+  }, [projectId])
 
   useEffect(() => {
     setLoading(true)
     void refresh().finally(() => setLoading(false))
   }, [refresh])
-
-  useEffect(() => {
-    setSelectedPath('')
-    setMenuDoc('')
-  }, [activeSource])
 
   /** 同步进度轮询 */
   useEffect(() => {
@@ -151,7 +146,7 @@ export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
   const handleSync = async () => {
     if (syncing) return
     try {
-      const res = await docSyncApi.startSync(projectId, activeSource || undefined)
+      const res = await docSyncApi.startSync(projectId)
       setRunId(res.runId)
       setRun(null)
       setSyncing(true)
@@ -179,7 +174,6 @@ export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
     if (!ok) return
     try {
       await docSyncApi.removeSource(projectId, source.id)
-      if (activeSource === source.id) setActiveSource('')
       await refresh()
     } catch (err) {
       setError(errText(err))
@@ -204,9 +198,18 @@ export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
     path === '' ? true : d.parentPath === path || d.parentPath.startsWith(`${path}/`)
   ))
 
-  const visibleDocs = docsIn(selectedPath)
-  const currentSource = sources.find((s) => s.id === activeSource) || null
-  const listLabel = selectedPath || (currentSource ? currentSource.name : '全部文档')
+  const keywordText = keyword.trim().toLowerCase()
+  const visibleDocs = docsIn(selectedPath).filter((d) => (
+    !keywordText
+    || d.title.toLowerCase().includes(keywordText)
+    || d.parentPath.toLowerCase().includes(keywordText)
+  ))
+  const listLabel = selectedPath || '全部文档'
+  const lastSyncedAt = sources
+    .map((s) => s.lastSyncedAt || '')
+    .filter(Boolean)
+    .sort()
+    .pop()
 
   const renderFolder = (path: string, depth: number) => {
     const children = childrenOf(path)
@@ -246,27 +249,22 @@ export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
 
   return (
     <div className="doclib-panel">
-      {/* 工具栏：源切换 + 同步 + 源管理 */}
+      {/* 工具栏：搜索 + 同步 + 源管理 */}
       <div className="doclib-toolbar">
-        <select
-          className="doclib-select"
-          value={activeSource}
-          onChange={(e) => setActiveSource(e.target.value)}
-          title="切换同步源"
-        >
-          <option value="">全部同步源</option>
-          {sources.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.kind === 'wiki_space' ? '知识库 · ' : '文件夹 · '}{s.name}
-            </option>
-          ))}
-        </select>
+        <label className="doclib-search">
+          <SearchIcon size={13} />
+          <input
+            value={keyword}
+            placeholder="搜索文档名 / 路径"
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </label>
 
         <span className="doclib-run">
           {syncing
             ? `同步中…${run ? ` 已扫描 ${run.total} 篇` : ''}`
-            : currentSource?.lastSyncedAt
-              ? `上次同步 ${fmtTime(currentSource.lastSyncedAt)}`
+            : lastSyncedAt
+              ? `上次同步 ${fmtTime(lastSyncedAt)}`
               : ''}
         </span>
 
@@ -390,7 +388,7 @@ export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
           onAdded={async (added) => {
             setAddOpen(false)
             await refresh()
-            if (added[0]) setActiveSource(added[0].id)
+            if (added.length === 0) return
             try {
               const res = await docSyncApi.startSync(projectId)
               setRunId(res.runId)
