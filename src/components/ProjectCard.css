@@ -184,3 +184,18 @@
   color: var(--status-neutral);
   cursor: default;
 }
+
+/* 菜单分区线 + 危险操作 */
+.project-card-menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.project-card-menu-item.danger {
+  color: var(--status-danger);
+}
+
+.project-card-menu-item.danger:hover:not(:disabled) {
+  background: var(--status-danger-bg);
+}

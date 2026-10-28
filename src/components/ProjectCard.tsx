@@ -28,10 +28,12 @@ interface ProjectCardProps {
   onOpen: () => void
   /** 移动到文件夹（undefined = 未分组） */
   onMove: (folderId: string | undefined) => void
+  /** 删除项目（软删除） */
+  onDelete: () => void
 }
 
-/** 项目卡片：基本信息 + 周期 + 成员概况（不含任务）+ ⋯ 菜单移动文件夹 */
-export default function ProjectCard({ project, folders, onOpen, onMove }: ProjectCardProps) {
+/** 项目卡片：基本信息 + 周期 + 成员概况（不含任务）+ ⋯ 菜单移动文件夹 / 删除项目 */
+export default function ProjectCard({ project, folders, onOpen, onMove, onDelete }: ProjectCardProps) {
   const shown = project.members.slice(0, 4)
   const badge = periodBadge(project)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -72,7 +74,7 @@ export default function ProjectCard({ project, folders, onOpen, onMove }: Projec
             ))}
           </span>
           <span className="project-card-meta">
-            {project.members.length} 成员 · {project.agents.length} ADE
+            {project.members.length} 成员 · {project.agents.length} agent
           </span>
         </div>
       </button>
@@ -117,6 +119,17 @@ export default function ProjectCard({ project, folders, onOpen, onMove }: Projec
               {f.name}
             </button>
           ))}
+          <div className="project-card-menu-divider" />
+          <button
+            type="button"
+            className="project-card-menu-item danger"
+            onClick={() => {
+              onDelete()
+              setMenuOpen(false)
+            }}
+          >
+            删除项目
+          </button>
         </div>
       )}
     </div>

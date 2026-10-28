@@ -12,10 +12,12 @@ interface FormModalProps {
   onClose: () => void
   /** 宽版弹窗（内容多时用，如编辑项目含成员/ADE 区块） */
   wide?: boolean
+  /** 危险操作（删除等）：确认按钮用红色 */
+  confirmDanger?: boolean
 }
 
 /** 通用弹窗表单：新增类操作统一使用（遮罩 + 居中弹窗 + 标题栏 + 字段 + 取消/确认） */
-export default function FormModal({ title, children, confirmText, confirmDisabled, onConfirm, onClose, wide }: FormModalProps) {
+export default function FormModal({ title, children, confirmText, confirmDisabled, onConfirm, onClose, wide, confirmDanger }: FormModalProps) {
   /** Escape 关闭（macOS 标准交互） */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -41,7 +43,12 @@ export default function FormModal({ title, children, confirmText, confirmDisable
         <div className="modal-fields">{children}</div>
         <div className="modal-actions">
           <button type="button" className="text-btn" onClick={onClose}>取消</button>
-          <button type="button" className="btn-primary" disabled={confirmDisabled} onClick={onConfirm}>
+          <button
+            type="button"
+            className={`btn-primary${confirmDanger ? ' danger' : ''}`}
+            disabled={confirmDisabled}
+            onClick={onConfirm}
+          >
             {confirmText}
           </button>
         </div>

@@ -111,6 +111,38 @@
   color: #b0b0b0;
 }
 
+/* 弹窗内 tips 说明块（信息底色 + i 图标） */
+.form-tips {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--status-info-bg);
+  border-radius: 8px;
+}
+
+.form-tips-icon {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-style: italic;
+  font-weight: 700;
+  color: #fff;
+  background: var(--status-info);
+  margin-top: 1.5px;
+}
+
+.form-tips-text {
+  font-size: 12px;
+  color: #4a4a4a;
+  line-height: 1.55;
+}
+
 /* 底部操作栏 */
 .modal-actions {
   display: flex;

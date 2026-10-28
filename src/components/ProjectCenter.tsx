@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Project, ProjectFolder } from '../data/projects'
-import { createEmptyProject, CURRENT_USER, FOLDER_MEMBER_POOL } from '../data/projects'
+import { createEmptyProject } from '../data/projects'
+import { orgApi } from '../lib/orgApi'
 import ProjectCard from './ProjectCard'
 import FolderCard from './FolderCard'
 import FormModal, { ModalField } from './FormModal'
 import MultiSelect from './MultiSelect'
+import SegmentedControl from './SegmentedControl'
+import { CodeIcon, DocIcon } from './icons'
 import './ProjectCenter.css'
 
 interface ProjectCenterProps {
@@ -17,10 +20,14 @@ interface ProjectCenterProps {
   onCreateFolder: (name: string, memberNames: string[]) => void
   /** 编辑文件夹：更新名称与可见成员范围 */
   onUpdateFolder: (folderId: string, patch: Pick<ProjectFolder, 'name' | 'members'>) => void
-  /** 删除文件夹：内部项目自动移至未分组 */
+  /** 删除文件夹（软删除）：内部项目自动移至未分组 */
   onDeleteFolder: (folderId: string) => void
   /** 移动项目到文件夹（undefined = 未分组） */
   onMoveProject: (projectId: string, folderId: string | undefined) => void
+  /** 删除项目（软删除，后端打删除标记） */
+  onDeleteProject: (projectId: string) => void
+  /** 当前登录用户名（文件夹「我」标识与所有者默认值） */
+  currentUserName: string
 }
 
 const STATUSES: Project['status'][] = ['规划中', '进行中', '已完成']
@@ -28,13 +35,16 @@ const STATUSES: Project['status'][] = ['规划中', '进行中', '已完成']
 interface DraftForm {
   name: string
   description: string
+  type: 'dev' | 'nondev'
   folderId: string
   status: Project['status']
   startDate: string
   endDate: string
 }
 
-const emptyForm: DraftForm = { name: '', description: '', folderId: '', status: '规划中', startDate: '', endDate: '' }
+const emptyForm: DraftForm = {
+  name: '', description: '', type: 'dev', folderId: '', status: '规划中', startDate: '', endDate: '',
+}
 
 /** 新建/编辑文件夹弹窗表单（共享结构） */
 interface FolderForm {
@@ -57,7 +67,24 @@ export default function ProjectCenter({
   onUpdateFolder,
   onDeleteFolder,
   onMoveProject,
+  onDeleteProject,
+  currentUserName,
 }: ProjectCenterProps) {
+  /** 组织成员（文件夹可见范围候选，来自后端） */
+  const [orgMemberNames, setOrgMemberNames] = useState<string[]>([])
+  /** 组织成员是否已加载（未加载时不做过滤，避免误清空） */
+  const [orgLoaded, setOrgLoaded] = useState(false)
+  useEffect(() => {
+    let alive = true
+    orgApi.members()
+      .then(({ members }) => {
+        if (!alive) return
+        setOrgMemberNames(members.map((m) => m.name))
+        setOrgLoaded(true)
+      })
+      .catch(() => { if (alive) setOrgLoaded(true) })
+    return () => { alive = false }
+  }, [])
   /** 页内层级：null = 顶层；string = 当前下钻的文件夹 id */
   const [openFolderId, setOpenFolderId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -71,6 +98,8 @@ export default function ProjectCenter({
   /** 编辑文件夹表单 */
   const [editFolderForm, setEditFolderForm] = useState<FolderForm>(emptyFolderForm)
   const [deletingFolder, setDeletingFolder] = useState<ProjectFolder | null>(null)
+  /** 待确认删除的项目（null = 关闭） */
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null)
 
   const openFolder = folders.find((f) => f.id === openFolderId) ?? null
   /** 当前视图内的项目：顶层 = 未分组；下钻 = 该文件夹内 */
@@ -106,6 +135,7 @@ export default function ProjectCenter({
       name: form.name.trim(),
       description: form.description.trim(),
       status: form.status,
+      type: form.type,
       startDate: form.startDate,
       endDate: form.endDate,
       folderId: form.folderId || undefined,
@@ -122,12 +152,18 @@ export default function ProjectCenter({
     setFolderMembers([])
   }
 
-  /** 打开编辑文件夹弹窗：预填当前名称与成员（所有者名单独立维护） */
+  /** 打开编辑文件夹弹窗：所有者/成员只保留设置页已导入的成员；没有则默认当前用户为所有者 */
   const openEditFolderModal = (folder: ProjectFolder) => {
+    const isOrgMember = (name: string) => !orgLoaded || orgMemberNames.includes(name)
+    const owners = folder.members.filter((m) => m.role === 'owner').map((m) => m.name).filter(isOrgMember)
+    const members = folder.members.filter((m) => m.role === 'member').map((m) => m.name).filter(isOrgMember)
+    const fallbackOwners = orgLoaded && !owners.includes(currentUserName) && orgMemberNames.includes(currentUserName)
+      ? [currentUserName]
+      : owners
     setEditFolderForm({
       name: folder.name,
-      members: folder.members.filter((m) => m.role === 'member').map((m) => m.name),
-      owners: folder.members.filter((m) => m.role === 'owner').map((m) => m.name),
+      owners: fallbackOwners,
+      members: members.filter((n) => !fallbackOwners.includes(n)),
     })
     setEditingFolder(folder)
   }
@@ -166,9 +202,9 @@ export default function ProjectCenter({
           /* —— 文件夹内部视图（面包屑） —— */
           <div className="project-center-head">
             <div>
-              <nav className="breadcrumb" aria-label="项目中心层级">
+              <nav className="breadcrumb" aria-label="协作中心层级">
                 <button type="button" className="breadcrumb-crumb" onClick={() => setOpenFolderId(null)}>
-                  项目中心
+                  协作中心
                 </button>
                 <span className="breadcrumb-sep">›</span>
                 <span className="breadcrumb-current">{openFolder.name}</span>
@@ -181,7 +217,7 @@ export default function ProjectCenter({
           /* —— 顶层视图 —— */
           <div className="project-center-head">
             <div>
-              <h1 className="page-title">项目中心</h1>
+              <h1 className="page-title">协作中心</h1>
               <p className="page-subtitle">{subtitle}</p>
             </div>
             <div className="project-center-actions">
@@ -209,6 +245,7 @@ export default function ProjectCenter({
               folders={folders}
               onOpen={() => onOpenProject(p.id)}
               onMove={(folderId) => onMoveProject(p.id, folderId)}
+              onDelete={() => setDeletingProject(p)}
             />
           ))}
         </div>
@@ -250,6 +287,19 @@ export default function ProjectCenter({
               placeholder="如 Loom Web 端研发"
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
+          </ModalField>
+          <ModalField label="项目类型">
+            <SegmentedControl
+              value={form.type}
+              onChange={(v) => setForm({ ...form, type: v as 'dev' | 'nondev' })}
+              items={[
+                { key: 'dev', label: '研发项目', icon: <CodeIcon size={13} /> },
+                { key: 'nondev', label: '非研发项目', icon: <DocIcon size={13} /> },
+              ]}
+            />
+            <p className="form-hint">
+              非研发项目不显示「代码」「终端」tab；项目类型创建后不可修改。
+            </p>
           </ModalField>
           <ModalField label="所属文件夹">
             <select
@@ -315,7 +365,7 @@ export default function ProjectCenter({
           {folderNameTaken(folderName) && <p className="form-hint danger">文件夹名已存在，请换一个</p>}
           <ModalField label="可见成员范围">
             <MultiSelect
-              options={FOLDER_MEMBER_POOL.filter((n) => n !== CURRENT_USER.name)}
+              options={orgMemberNames.filter((n) => n !== currentUserName)}
               value={folderMembers}
               onChange={setFolderMembers}
               placeholder="选择谁可以看到这个文件夹"
@@ -349,39 +399,27 @@ export default function ProjectCenter({
             <p className="form-hint danger">文件夹名已存在，请换一个</p>
           )}
           <ModalField label="所有者">
-            <div className="folder-member-list">
-              {editOwners.map((name) => (
-                <div key={name} className="folder-member-row">
-                  <span className={`folder-member-avatar${name === CURRENT_USER.name ? ' me' : ''}`}>{name[0].toUpperCase()}</span>
-                  <span className="folder-member-name">
-                    {name}{name === CURRENT_USER.name ? '（我）' : ''}
-                  </span>
-                  <span className="folder-member-role owner">所有者</span>
-                  <button
-                    type="button"
-                    className="text-btn danger"
-                    disabled={editOwners.length <= 1}
-                    title={editOwners.length <= 1 ? '至少保留一名所有者' : '移除该所有者'}
-                    onClick={() => setEditFolderForm({
-                      ...editFolderForm,
-                      owners: editOwners.filter((n) => n !== name),
-                    })}
-                  >
-                    移除
-                  </button>
-                </div>
-              ))}
-            </div>
+            <MultiSelect
+              options={orgMemberNames}
+              value={editOwners}
+              onChange={(owners) => setEditFolderForm({
+                ...editFolderForm,
+                owners,
+                members: editFolderForm.members.filter((n) => !owners.includes(n)),
+              })}
+              placeholder="从设置页成员中选择所有者"
+            />
           </ModalField>
           {editOwners.length === 0 && <p className="form-hint danger">文件夹至少需要一名所有者</p>}
+          {orgLoaded && orgMemberNames.length === 0 && (
+            <p className="form-hint">设置页还没有成员，请先到「设置 › 成员管理」导入成员。</p>
+          )}
           <ModalField label="成员">
             <MultiSelect
-              options={FOLDER_MEMBER_POOL.filter(
-                (n) => n !== CURRENT_USER.name && !editOwners.includes(n),
-              )}
-              value={editFolderForm.members}
+              options={orgMemberNames.filter((n) => !editOwners.includes(n))}
+              value={editFolderForm.members.filter((n) => !editOwners.includes(n))}
               onChange={(members) => setEditFolderForm({ ...editFolderForm, members })}
-              placeholder="选择文件夹成员"
+              placeholder="从设置页成员中选择成员"
             />
           </ModalField>
           <p className="form-hint">
@@ -390,11 +428,34 @@ export default function ProjectCenter({
         </FormModal>
       )}
 
+      {/* 删除项目二次确认（软删除） */}
+      {deletingProject && (
+        <FormModal
+          title="删除项目"
+          confirmText="删除"
+          confirmDanger
+          onConfirm={() => {
+            onDeleteProject(deletingProject.id)
+            setDeletingProject(null)
+          }}
+          onClose={() => setDeletingProject(null)}
+        >
+          <p className="form-hint">确定删除项目「{deletingProject.name}」吗？</p>
+          <div className="form-tips">
+            <span className="form-tips-icon">i</span>
+            <span className="form-tips-text">
+              软删除：项目将从协作中心移除，成员 / 会话 / Agent 等数据保留在服务端。
+            </span>
+          </div>
+        </FormModal>
+      )}
+
       {/* 删除文件夹二次确认 */}
       {deletingFolder && (
         <FormModal
           title="删除文件夹"
           confirmText="删除"
+          confirmDanger
           onConfirm={handleDeleteFolder}
           onClose={() => setDeletingFolder(null)}
         >
@@ -403,6 +464,12 @@ export default function ProjectCenter({
               ? `「${deletingFolder.name}」内有 ${folderCount(deletingFolder.id)} 个项目，删除后项目将移至未分组。`
               : `确定删除空文件夹「${deletingFolder.name}」吗？`}
           </p>
+          <div className="form-tips">
+            <span className="form-tips-icon">i</span>
+            <span className="form-tips-text">
+              软删除：文件夹将从协作中心移除，数据保留在服务端。
+            </span>
+          </div>
         </FormModal>
       )}
     </div>

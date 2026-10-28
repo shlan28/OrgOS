@@ -1,9 +1,11 @@
 import type { Project } from '../../data/projects'
-import { CURRENT_USER, memberColorOf } from '../../data/projects'
+import { memberColorOf } from '../../data/projects'
 import './MembersDrawer.css'
 
 interface MembersDrawerProps {
   project: Project
+  /** 当前登录用户名（成员「我」标识） */
+  currentUserName: string
   onClose: () => void
 }
 
@@ -11,25 +13,25 @@ interface MembersDrawerProps {
  * 会话成员抽屉（格 2 覆盖式，纯只读）：
  * 成员/接入 ADE 列表 + 在线状态——添加与编辑入口在「编辑项目」弹窗（点格 1 项目名打开）。
  */
-export default function MembersDrawer({ project, onClose }: MembersDrawerProps) {
+export default function MembersDrawer({ project, currentUserName, onClose }: MembersDrawerProps) {
   const members = project.members
   const agents = project.agents
 
   return (
     <>
       <div className="chat-drawer-mask" onClick={onClose} />
-      <div className="chat-drawer" role="dialog" aria-label="会话成员">
+      <div className="chat-drawer" role="dialog" aria-label="项目成员">
         <div className="chat-drawer-head">
-          <span className="chat-drawer-title">会话成员</span>
+          <span className="chat-drawer-title">项目成员</span>
           <span className="chat-drawer-count">
-            {members.length} 人 · {agents.length} ADE
+            {members.length} 人 · {agents.length} agent
           </span>
           <button type="button" className="chat-drawer-close" aria-label="关闭" onClick={onClose}>×</button>
         </div>
 
         <div className="chat-drawer-body">
           {members.map((m) => {
-            const isMe = m.name === CURRENT_USER.name
+            const isMe = m.name === currentUserName
             return (
               <div key={m.id} className="member-drawer-item">
                 <div className="member-drawer-row">
@@ -42,27 +44,23 @@ export default function MembersDrawer({ project, onClose }: MembersDrawerProps) 
                       {isMe && <span className="member-drawer-me">我</span>}
                     </span>
                     <span className="member-drawer-sub">
-                      {m.permission ? `${m.role} · ${m.permission}` : m.role}
+                      {[m.role, m.permission].filter(Boolean).join(' · ')}
                     </span>
-                  </span>
-                  <span className="member-drawer-right">
-                    <span className={`member-drawer-dot${m.online ? ' online' : ''}`} title={m.online ? '在线' : '离线'} />
-                    <span className="member-drawer-active">{m.lastActive}</span>
                   </span>
                 </div>
               </div>
             )
           })}
 
-          {/* 接入的 ADE（只读展示） */}
+          {/* 项目 agent（全部可用，不按会话归属） */}
           {agents.length > 0 && (
             <>
-              <div className="member-drawer-group">接入的 ADE</div>
+              <div className="member-drawer-group">项目 agent（全部可用）</div>
               {agents.map((a) => (
                 <div key={a.id} className="member-drawer-item">
                   <div className="member-drawer-row">
                     <span className="member-drawer-avatar member-drawer-ade" title={a.role}>
-                      {a.name.replace(/ADE$/, '').charAt(0)}
+                      {a.name.charAt(0).toUpperCase()}
                     </span>
                     <span className="member-drawer-text">
                       <span className="member-drawer-name">
