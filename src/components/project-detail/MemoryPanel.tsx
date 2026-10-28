@@ -58,7 +58,7 @@ const RULE_SECTIONS = [
   { key: 'collect', label: '自动收集' },
   { key: 'rules', label: '收集规则' },
   { key: 'policy', label: '保留策略' },
-  { key: 'reflect', label: '反思规则' },
+  { key: 'reflect', label: '反思规则', disabled: true },
   { key: 'inject', label: '会话使用' },
 ] as const
 
@@ -104,6 +104,8 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
   const [ruleSection, setRuleSection] = useState<RuleSectionKey>('collect')
   const [rulesSaving, setRulesSaving] = useState(false)
   const [rulesError, setRulesError] = useState('')
+  /** 保存成功 toast（不关闭规则弹窗） */
+  const [saveToast, setSaveToast] = useState<{ id: number; text: string } | null>(null)
   const [collecting, setCollecting] = useState(false)
 
   const [adding, setAdding] = useState(false)
@@ -140,15 +142,12 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
     void load()
   }, [load])
 
-  // Escape 关闭规则弹窗
+  // 保存成功 toast 自动消失；规则弹窗只由右上角 × 关闭
   useEffect(() => {
-    if (!rulesOpen) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setRulesOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [rulesOpen])
+    if (!saveToast) return
+    const timer = setTimeout(() => setSaveToast(null), 2000)
+    return () => clearTimeout(timer)
+  }, [saveToast])
 
   const daysValid = Number.isInteger(Number(rulesDraft.retentionDays))
     && Number(rulesDraft.retentionDays) >= 1
@@ -167,6 +166,7 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
     setRulesDraft({ ...settings })
     setRuleSection('collect')
     setRulesError('')
+    setSaveToast(null)
     setRulesOpen(true)
   }
 
@@ -189,7 +189,7 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
       })
       setSettings(next)
       onSettingsChange?.(next)
-      setRulesOpen(false)
+      setSaveToast({ id: Date.now(), text: '保存成功' })
       void load(false)
     } catch (err) {
       setRulesError(msgOf(err, '保存失败'))
@@ -327,17 +327,18 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
       </Section>
 
       {rulesOpen && (
-        <div
-          className="modal-overlay"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setRulesOpen(false)
-          }}
-        >
+        <div className="modal-overlay">
           <div className="modal-box memory-rules-modal" role="dialog" aria-modal="true" aria-label="记忆规则">
             <div className="modal-head">
               <span className="modal-title">记忆规则</span>
               <button type="button" className="modal-close" aria-label="关闭" onClick={() => setRulesOpen(false)}>×</button>
             </div>
+            {saveToast && (
+              <div className="memory-save-toast" role="status" key={saveToast.id}>
+                <span className="memory-save-toast-icon">✓</span>
+                {saveToast.text}
+              </div>
+            )}
             <div className="memory-rules-body">
               <div className="memory-rules-nav" role="tablist">
                 {RULE_SECTIONS.map((section) => (
@@ -346,10 +347,18 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
                     type="button"
                     role="tab"
                     aria-selected={ruleSection === section.key}
-                    className={`memory-rules-nav-item${ruleSection === section.key ? ' active' : ''}`}
-                    onClick={() => setRuleSection(section.key)}
+                    disabled={'disabled' in section && section.disabled}
+                    title={'disabled' in section && section.disabled ? '自动反思暂未开放' : undefined}
+                    className={`memory-rules-nav-item${ruleSection === section.key ? ' active' : ''}${'disabled' in section && section.disabled ? ' disabled' : ''}`}
+                    onClick={() => {
+                      if ('disabled' in section && section.disabled) return
+                      setRuleSection(section.key)
+                    }}
                   >
-                    {section.label}
+                    <span>{section.label}</span>
+                    {'disabled' in section && section.disabled && (
+                      <span className="memory-rules-nav-soon">待开放</span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -552,7 +561,16 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
               </div>
             </div>
             <div className="modal-actions">
-              <button type="button" className="text-btn" onClick={() => setRulesOpen(false)}>取消</button>
+              <button
+                type="button"
+                className="text-btn"
+                onClick={() => {
+                  setRulesDraft({ ...settings })
+                  setRulesError('')
+                }}
+              >
+                重置
+              </button>
               <button type="button" className="btn-primary" disabled={rulesSaveDisabled || rulesSaving} onClick={() => void handleSaveRules()}>
                 {rulesSaving ? '保存中…' : '保存'}
               </button>

@@ -21,6 +21,38 @@
   overflow-y: hidden;
 }
 
+/* 四格内滚动条：保留滚动能力，弱化视觉 */
+.detail-grid,
+.detail-grid * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.14) transparent;
+}
+
+.detail-grid ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.detail-grid ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.detail-grid ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+.detail-grid ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+  background-clip: content-box;
+}
+
+.detail-grid ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* 格子语言：白底圆角卡片 */
 .detail-cell {
   background: #fff;
@@ -74,12 +106,9 @@
   align-items: stretch;
 }
 
-/* 一级子面板：占满可用宽（720px 阅读上限，格窄时跟随格宽） */
+/* 一级子面板：占满格宽，随窗口拉伸 */
 .detail-panel > * {
   width: 100%;
-  max-width: 720px;
-  margin-left: auto;
-  margin-right: auto;
 }
 
 /* 面板内部 Settings 分组卡片同样撑满 */

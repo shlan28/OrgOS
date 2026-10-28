@@ -45,11 +45,49 @@
 
 /* 弹窗高度固定：不随右侧内容（收集规则大 textarea 等）增减变化 */
 .memory-rules-modal {
+  position: relative;
   width: 640px;
   height: 560px;
   max-height: calc(100vh - 96px);
   display: flex;
   flex-direction: column;
+}
+
+/* 保存成功 toast：不关闭弹窗，2s 后自动消失 */
+.memory-save-toast {
+  position: absolute;
+  top: 52px;
+  right: 18px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  animation: memory-toast-in 0.16s ease-out;
+}
+
+.memory-save-toast-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  line-height: 1;
+}
+
+@keyframes memory-toast-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* 内容区弹性占满固定高（右侧溢出时区内滚动） */
@@ -78,6 +116,10 @@
 }
 
 .memory-rules-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   border: none;
   background: transparent;
   font-family: inherit;
@@ -100,6 +142,28 @@
   color: var(--text-primary);
   font-weight: 600;
   background: rgba(0, 0, 0, 0.06);
+}
+
+.memory-rules-nav-item:disabled,
+.memory-rules-nav-item.disabled {
+  color: #c2c2c6;
+  cursor: default;
+}
+
+.memory-rules-nav-item:disabled:hover,
+.memory-rules-nav-item.disabled:hover {
+  color: #c2c2c6;
+  background: transparent;
+}
+
+.memory-rules-nav-soon {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 15px;
+  color: #b0b0b4;
+  border: 1px solid var(--row-divider);
+  border-radius: 4px;
+  padding: 0 4px;
 }
 
 /* 右：当前选中项的具体内容（占满固定高，区内滚动） */
