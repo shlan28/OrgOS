@@ -328,3 +328,122 @@
   color: #fff;
   cursor: not-allowed;
 }
+
+/* 提示词用量条 */
+.specs-usage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 10px;
+  padding: 0 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.specs-usage-bytes {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.specs-usage-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.specs-help-btn {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--main-bg);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-family: inherit;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.specs-help-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.specs-usage-hint {
+  margin: -4px 0 10px;
+  padding: 0 2px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* 容量说明弹窗 */
+.specs-help-modal {
+  width: 560px;
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+.specs-help-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #3a3a3a;
+}
+
+.specs-help-body h4 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.specs-help-body h4:first-child {
+  margin-top: 0;
+}
+
+.specs-help-body ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.specs-help-body li {
+  margin: 4px 0;
+}
+
+.specs-help-body p {
+  margin: 4px 0;
+}
+
+.specs-help-body strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* 行内 / 表单错误 */
+.specs-error {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--status-danger);
+  line-height: 1.5;
+}
+
+.specs-form-error {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--status-danger);
+  line-height: 1.5;
+}
+
+/* 真实 markdown 预览保留换行 */
+.specs-preview-body {
+  white-space: pre-wrap;
+}

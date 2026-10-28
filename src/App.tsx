@@ -501,6 +501,7 @@ export default function App() {
                 engine={engine}
                 initialNav={view.initialNav}
                 currentUserName={authUser.name}
+                currentUserPermission={authUser.permission}
                 settingsAgents={userSettings.myAdes}
                 onUpdateAgent={handleUpdateAgent}
                 onBindAgent={handleBindAgent}

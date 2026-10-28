@@ -88,6 +88,21 @@ CREATE TABLE IF NOT EXISTS projects (
   updated_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS project_specs (
+  id          TEXT PRIMARY KEY,
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  note        TEXT NOT NULL DEFAULT '',
+  markdown    TEXT NOT NULL DEFAULT '',
+  in_prompt   INTEGER NOT NULL DEFAULT 0,
+  created_by  TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  UNIQUE(project_id, name)
+);
+CREATE INDEX IF NOT EXISTS project_specs_project
+  ON project_specs(project_id, created_at);
+
 CREATE TABLE IF NOT EXISTS agents (
   id            TEXT PRIMARY KEY,
   name          TEXT NOT NULL,
@@ -1503,6 +1518,73 @@ export function setKbConfig(input) {
 
 export function kbEmbeddingKey() {
   return readSecrets().kbEmbeddingKey || ''
+}
+
+/* ---------------- project specs ---------------- */
+
+const rowToProjectSpec = (r) => ({
+  id: r.id,
+  projectId: r.project_id,
+  name: r.name,
+  note: r.note || '',
+  markdown: r.markdown || '',
+  inPrompt: Boolean(r.in_prompt),
+  createdBy: r.created_by || '',
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+})
+
+export function listProjectSpecs(projectId) {
+  return db.prepare('SELECT * FROM project_specs WHERE project_id = ? ORDER BY created_at DESC')
+    .all(projectId).map(rowToProjectSpec)
+}
+
+export function getProjectSpec(id) {
+  const row = db.prepare('SELECT * FROM project_specs WHERE id = ?').get(id)
+  return row ? rowToProjectSpec(row) : null
+}
+
+export function findProjectSpecByName(projectId, name) {
+  const row = db.prepare('SELECT * FROM project_specs WHERE project_id = ? AND name = ?').get(projectId, name)
+  return row ? rowToProjectSpec(row) : null
+}
+
+export function insertProjectSpec(input) {
+  const now = nowISO()
+  const id = input.id ?? newId('spec')
+  db.prepare(`INSERT INTO project_specs
+      (id, project_id, name, note, markdown, in_prompt, created_by, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    id,
+    input.projectId,
+    input.name,
+    input.note ?? '',
+    input.markdown ?? '',
+    input.inPrompt ? 1 : 0,
+    input.createdBy ?? '',
+    now,
+    now,
+  )
+  return getProjectSpec(id)
+}
+
+export function updateProjectSpec(id, input) {
+  const existing = getProjectSpec(id)
+  if (!existing) return null
+  const name = input.name ?? existing.name
+  const note = input.note ?? existing.note
+  const markdown = input.markdown ?? existing.markdown
+  const inPrompt = input.inPrompt ?? existing.inPrompt
+  db.prepare(`UPDATE project_specs
+              SET name = ?, note = ?, markdown = ?, in_prompt = ?, updated_at = ?
+              WHERE id = ?`).run(
+    name, note, markdown, inPrompt ? 1 : 0, nowISO(), id,
+  )
+  return getProjectSpec(id)
+}
+
+export function deleteProjectSpec(id) {
+  db.prepare('DELETE FROM project_specs WHERE id = ?').run(id)
 }
 
 /* ---------------- memories ---------------- */

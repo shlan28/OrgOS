@@ -102,6 +102,13 @@ import {
   startRetentionLoop,
   updateMemorySettings,
 } from './memory.js'
+import {
+  createProjectSpec,
+  editProjectSpec,
+  listProjectSpecDtos,
+  removeProjectSpec,
+  setProjectSpecPrompt,
+} from './specs.js'
 import { activeRunOf, browse, ingestDoc, startSync } from './docSync.js'
 import { indexDocument, indexProject, isIndexing, search } from './kb.js'
 import { bus, cancelTurn, cliInfo, killAll, running } from './runner.js'
@@ -1432,6 +1439,92 @@ app.put('/api/projects/:id/kb/config', (req, res) => {
     rerankModel: typeof body.rerankModel === 'string' ? body.rerankModel : undefined,
     apiKey: typeof body.apiKey === 'string' ? body.apiKey : undefined,
   }) })
+})
+
+/* ---------------- project specs ---------------- */
+
+const sendSpecError = (res, err) => {
+  const status = Number(err?.status) || 500
+  const body = { error: err?.message || '规范操作失败' }
+  if (err?.bytes != null) body.bytes = err.bytes
+  if (err?.maxBytes != null) body.maxBytes = err.maxBytes
+  res.status(status).json(body)
+}
+
+app.get('/api/projects/:id/specs', (req, res) => {
+  const project = requireProject(req, res, req.params.id)
+  if (!project) return
+  res.json(listProjectSpecDtos(project.id))
+})
+
+app.post('/api/projects/:id/specs', (req, res) => {
+  const project = requireProject(req, res, req.params.id)
+  if (!project) return
+  const role = projectRoleOf(req.user, project)
+  try {
+    const spec = createProjectSpec({
+      projectId: project.id,
+      input: req.body ?? {},
+      userName: req.user?.name || '',
+      canManagePrompt: role === 'admin' || role === 'manager',
+    })
+    res.status(201).json({ spec, prompt: listProjectSpecDtos(project.id).prompt })
+  } catch (err) {
+    sendSpecError(res, err)
+  }
+})
+
+app.put('/api/projects/:id/specs/:specId', (req, res) => {
+  const project = requireProject(req, res, req.params.id)
+  if (!project) return
+  const role = projectRoleOf(req.user, project)
+  try {
+    const spec = editProjectSpec({
+      projectId: project.id,
+      specId: req.params.specId,
+      input: req.body ?? {},
+      canManagePrompt: role === 'admin' || role === 'manager',
+    })
+    res.json({ spec, prompt: listProjectSpecDtos(project.id).prompt })
+  } catch (err) {
+    sendSpecError(res, err)
+  }
+})
+
+app.delete('/api/projects/:id/specs/:specId', (req, res) => {
+  const project = requireProject(req, res, req.params.id)
+  if (!project) return
+  const role = projectRoleOf(req.user, project)
+  try {
+    const result = removeProjectSpec({
+      projectId: project.id,
+      specId: req.params.specId,
+      canManagePrompt: role === 'admin' || role === 'manager',
+    })
+    res.json({ ...result, prompt: listProjectSpecDtos(project.id).prompt })
+  } catch (err) {
+    sendSpecError(res, err)
+  }
+})
+
+app.patch('/api/projects/:id/specs/:specId/prompt', (req, res) => {
+  const project = requireProject(req, res, req.params.id)
+  if (!project) return
+  if (typeof req.body?.inPrompt !== 'boolean') {
+    return res.status(400).json({ error: 'inPrompt 必须是布尔值' })
+  }
+  const role = projectRoleOf(req.user, project)
+  try {
+    const spec = setProjectSpecPrompt({
+      projectId: project.id,
+      specId: req.params.specId,
+      inPrompt: req.body.inPrompt,
+      canManagePrompt: role === 'admin' || role === 'manager',
+    })
+    res.json({ spec, prompt: listProjectSpecDtos(project.id).prompt })
+  } catch (err) {
+    sendSpecError(res, err)
+  }
 })
 
 /* ---------------- memories ---------------- */

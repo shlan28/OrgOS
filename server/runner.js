@@ -21,6 +21,7 @@ import {
   maybeCollectIfDue,
   recallMemories,
 } from './memory.js'
+import { syncAgentSpecs } from './specs.js'
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..')
 
@@ -156,6 +157,9 @@ export async function startTurn({ agent, session, turn, content }) {
   const dshHome = path.join(DATA_DIR, 'dsh', agent.id)
   fs.mkdirSync(dshHome, { recursive: true })
   const patch = writePatch(agent, runtime)
+
+  // 每轮启动前把最新的项目规范写入 AGENTS.md（内容未变则跳过）
+  if (session.projectId) syncAgentSpecs(session.projectId, agent)
 
   // 记忆默认注入：项目总开关 × 本轮开关
   let memoryHits = []

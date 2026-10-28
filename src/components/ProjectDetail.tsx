@@ -78,6 +78,8 @@ interface ProjectDetailProps {
   initialNav?: NavKey
   /** 当前登录用户名（成员「我」标识） */
   currentUserName: string
+  /** 当前登录用户的组织权限（所有者 / 管理员 / 成员） */
+  currentUserPermission: string
   /** 设置页已配置的 Agent（项目 agent 只能从这里添加） */
   settingsAgents: AdeAgent[]
   /** 保存 Agent 配置（写回设置页 Agent） */
@@ -113,7 +115,7 @@ const clockText = (iso: string) => {
  */
 export default function ProjectDetail({
   project, projects, folders, onUpdateProject, engine, initialNav,
-  currentUserName, settingsAgents, onUpdateAgent, onBindAgent,
+  currentUserName, currentUserPermission, settingsAgents, onUpdateAgent, onBindAgent,
   onDeleteProject, onRefreshAgents,
 }: ProjectDetailProps) {
   // —— 会话：后端持久化（格 1/2/3 共享） ——
@@ -126,6 +128,13 @@ export default function ProjectDetail({
   /** 会话相关操作错误（加载 / 创建 / 改名 / 发送） */
   const [sessionError, setSessionError] = useState('')
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null
+
+  /** 成员可编辑普通规范；已入提示词的规范与开关仅负责人 / 组织管理员可动 */
+  const canManagePrompt = useMemo(() => {
+    if (currentUserPermission === '所有者' || currentUserPermission === '管理员') return true
+    const member = project.members.find((m) => m.name === currentUserName)
+    return member?.permission === '项目负责人'
+  }, [currentUserPermission, currentUserName, project.members])
 
   /** 加载项目会话；selectId 指定选中项（新建会话后使用） */
   const loadSessions = useCallback(async (selectId?: string) => {
@@ -533,10 +542,7 @@ export default function ProjectDetail({
     switch (activeTab) {
       case 'specs':
         return (
-          <SpecsPanel
-            specs={project.specs}
-            onUpdateSpecs={(specs) => onUpdateProject(project.id, (p) => ({ ...p, specs }))}
-          />
+          <SpecsPanel projectId={project.id} canManagePrompt={canManagePrompt} />
         )
       case 'code':
         return (
