@@ -1,0 +1,36 @@
+/* 设置页「运行时」凭证行：标签 + 输入 + 状态 + 操作 */
+.settings-row.runtime-field-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.runtime-field-row .runtime-field-label {
+  width: 76px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.runtime-field-row .field-input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  font-family: inherit;
+}
+
+.runtime-field-row .field-input:focus {
+  border-color: #9cc3e8;
+  box-shadow: 0 0 0 3px rgba(59, 120, 201, 0.1);
+}
+
+.runtime-field-row .field-input::placeholder {
+  color: #b3b6bb;
+}
