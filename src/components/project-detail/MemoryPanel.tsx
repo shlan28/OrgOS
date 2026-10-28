@@ -357,39 +357,62 @@ export default function MemoryPanel({ projectId, onSettingsChange }: MemoryPanel
                 {ruleSection === 'collect' && (
                   <div className="memory-rules-field">
                     <div className="memory-rules-field-label">自动收集</div>
-                    <label className="policy-permanent">
-                      <Toggle
-                        checked={rulesDraft.autoCollect}
-                        onChange={(next) => setRulesDraft({ ...rulesDraft, autoCollect: next })}
-                      />
-                      自动从会话收集记忆
-                    </label>
-                    <div className="policy-days-row">
-                      <span className="collect-every-label">每个会话每累计</span>
-                      <input
-                        className="field-input collect-every-input"
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={rulesDraft.collectEvery}
-                        disabled={!rulesDraft.autoCollect}
-                        onChange={(event) => setRulesDraft({ ...rulesDraft, collectEvery: Number(event.target.value) })}
-                      />
-                      <span className="collect-every-label">轮对话提炼一次</span>
+
+                    <div className="rule-card">
+                      <div className="rule-card-row">
+                        <div className="rule-card-main">
+                          <div className="rule-card-title">自动从会话收集记忆</div>
+                          <div className="rule-card-desc">开启后按累计轮次自动提炼；关闭不会删除已有记忆</div>
+                        </div>
+                        <Toggle
+                          checked={rulesDraft.autoCollect}
+                          onChange={(next) => setRulesDraft({ ...rulesDraft, autoCollect: next })}
+                        />
+                      </div>
                     </div>
-                    <p className="memory-rules-hint">
-                      不足 {rulesDraft.collectEvery || 5} 轮时不会自动收集，可点下方「立即收集」，或等对话继续。
-                    </p>
-                    <div className="memory-collect-row">
-                      <button
-                        type="button"
-                        className="text-btn"
-                        disabled={collecting}
-                        onClick={() => void handleCollect()}
-                      >
-                        {collecting ? '收集中…' : '立即收集一次'}
-                      </button>
-                      <span className="memory-rules-hint">自动收集关闭时仍可手动触发</span>
+
+                    <div className={`rule-card${rulesDraft.autoCollect ? '' : ' disabled'}`}>
+                      <div className="rule-card-row">
+                        <div className="rule-card-main">
+                          <div className="rule-card-title">收集频率</div>
+                          <div className="rule-card-desc">每个会话累计多少轮后提炼一次</div>
+                        </div>
+                        <div className="rule-inline-control">
+                          <span>每</span>
+                          <input
+                            className="field-input collect-every-input"
+                            type="number"
+                            min={1}
+                            max={50}
+                            value={rulesDraft.collectEvery}
+                            disabled={!rulesDraft.autoCollect}
+                            aria-label="收集频率（轮）"
+                            onChange={(event) => setRulesDraft({ ...rulesDraft, collectEvery: Number(event.target.value) })}
+                          />
+                          <span>轮</span>
+                        </div>
+                      </div>
+                      <div className="rule-card-foot">
+                        不足 {rulesDraft.collectEvery || 5} 轮不会自动收集；关闭自动收集时此项不生效。
+                      </div>
+                    </div>
+
+                    <div className="rule-card">
+                      <div className="rule-card-row">
+                        <div className="rule-card-main">
+                          <div className="rule-card-title">立即收集一次</div>
+                          <div className="rule-card-desc">处理上次收集之后的新对话，不受上方开关限制</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          disabled={collecting}
+                          onClick={() => void handleCollect()}
+                        >
+                          {collecting ? '收集中…' : '立即收集'}
+                        </button>
+                      </div>
+                      {actionNote && <div className="rule-card-foot">{actionNote}</div>}
                     </div>
                   </div>
                 )}
