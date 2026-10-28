@@ -1,0 +1,147 @@
+.login-screen {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #d8dee8 0%, #c3ccd9 50%, #b8c2d2 100%);
+}
+
+.login-card {
+  width: 400px;
+  max-width: 100%;
+  background: var(--main-bg);
+  border-radius: 14px;
+  padding: 26px 26px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.18),
+    0 0 0 0.5px rgba(0, 0, 0, 0.08);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--text-primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.login-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+}
+
+.login-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.login-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.login-submit {
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.login-submit:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.login-submit:disabled {
+  background: #d8d8dc;
+  cursor: default;
+}
+
+.login-submit.ghost {
+  background: #fff;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.login-submit.ghost:hover:not(:disabled) {
+  background: #f7f7f8;
+  opacity: 1;
+}
+
+.login-feishu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 0 12px;
+}
+
+.login-feishu-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.login-feishu-sub {
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.login-feishu .login-submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.login-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--status-danger);
+  background: var(--status-danger-bg);
+}
+
+.login-foot {
+  margin: 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
