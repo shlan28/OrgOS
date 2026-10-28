@@ -1,17 +1,59 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Knowledge, KbDoc, KbIndexState } from '../../data/projects'
-import { DocIcon, SearchIcon, FolderIcon } from '../icons'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { docSyncApi, type SyncDoc } from '../../lib/docSyncApi'
+import { kbApi, type KbChunk, type KbConfig, type KbSearchResult, type KbStatus } from '../../lib/kbApi'
+import { DocIcon, SearchIcon, FolderIcon, ChevronRightIcon, ExternalIcon } from '../icons'
 import './KbIndexPanel.css'
 
 interface KbIndexPanelProps {
-  knowledge: Knowledge
-  onUpdateKnowledge: (k: Knowledge) => void
+  projectId: string
 }
 
-/** 未分组伪目录 id（无 folderId 文档聚合节点） */
-const UNGROUPED = '__ungrouped__'
-/** 全部文档伪目录 id */
 const ALL = '__all__'
+const UNGROUPED = '__ungrouped__'
+const CHUNK_PAGE = 20
+
+const TYPE_LABEL: Record<string, string> = {
+  docx: '文档',
+  doc: '文档',
+  sheet: '表格',
+  bitable: '多维表格',
+  file: '文件',
+  mindnote: '思维导图',
+  slides: '幻灯片',
+}
+
+type KbViewState = 'indexed' | 'stale' | 'ready' | 'fetching' | 'failed' | 'off'
+
+const STATE_META: Record<KbViewState, { label: string; cls: string }> = {
+  indexed: { label: '已索引', cls: 'indexed' },
+  stale: { label: '待更新', cls: 'stale' },
+  ready: { label: '待索引', cls: 'pending' },
+  fetching: { label: '拉取中', cls: 'pending' },
+  failed: { label: '失败', cls: 'failed' },
+  off: { label: '未收录', cls: 'off' },
+}
+
+const stateOf = (doc: SyncDoc): KbViewState => {
+  if (doc.kbState === 'off') return 'off'
+  if (doc.kbState === 'indexed') return doc.stale ? 'stale' : 'indexed'
+  if (doc.kbState === 'ready') return 'ready'
+  if (doc.kbState === 'fetching') return 'fetching'
+  return 'failed'
+}
+
+const ROUTE_LABEL: Record<string, string> = { bm25: '关键词', like: '短词', vector: '语义' }
+
+const errText = (err: unknown) => (err instanceof Error ? err.message : String(err))
+
+const fmtTime = (iso?: string | null) => {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '')
 
 type FilterKey = 'all' | 'included' | 'excluded' | 'attention'
 
@@ -22,312 +64,330 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: 'attention', label: '需处理' },
 ]
 
-const stateOf = (doc: KbDoc): KbIndexState => doc.indexState ?? 'off'
-const isIndexable = (s: KbIndexState) => s !== 'off'
-
-/** 状态徽标文案与配色 */
-const STATE_META: Record<KbIndexState, { label: string; cls: string }> = {
-  indexed: { label: '已索引', cls: 'indexed' },
-  indexing: { label: '索引中', cls: 'indexing' },
-  pending: { label: '排队中', cls: 'pending' },
-  failed: { label: '失败', cls: 'failed' },
-  stale: { label: '已过期', cls: 'stale' },
-  off: { label: '未收录', cls: 'off' },
-}
-
-const nowStamp = () => {
-  const d = new Date()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mi = String(d.getMinutes()).padStart(2, '0')
-  return `${mm}-${dd} ${hh}:${mi}`
-}
-
-/** 片段分页大小 */
-const CHUNK_PAGE_SIZE = 10
-
-/** 分页页码序列（当前页居中窗口 + 首 1 + 尾页，最多 7 个数字位；用 0 表示省略号占位） */
-function pageNumbers(page: number, pageCount: number): number[] {
-  if (pageCount <= 7) return Array.from({ length: pageCount }, (_, i) => i + 1)
-  const set = new Set<number>([1, pageCount, page - 1, page, page + 1])
-  if (page <= 3) [2, 3, 4].forEach((n) => set.add(n))
-  if (page >= pageCount - 2) [pageCount - 3, pageCount - 2, pageCount - 1].forEach((n) => set.add(n))
-  const nums = [...set].filter((n) => n >= 1 && n <= pageCount).sort((a, b) => a - b)
-  const out: number[] = []
-  let prev = 0
-  for (const n of nums) {
-    if (n - prev > 1) out.push(0) // 省略号占位
-    out.push(n)
-    prev = n
-  }
-  return out
-}
-
-/**
- * 派生 Mock 片段列表（数量 = chunks）：
- * 以文档 content 小节为种子循环生成，带段内序号避免重样（演示用）。
- */
-function chunkListOf(doc: KbDoc): { heading: string; body: string }[] {
-  const total = doc.chunks ?? 0
-  if (total <= 0 || doc.content.length === 0) return []
-  const out: { heading: string; body: string }[] = []
-  for (let i = 0; i < total; i++) {
-    const seed = doc.content[i % doc.content.length]
-    const round = Math.floor(i / doc.content.length)
-    out.push(
-      round === 0
-        ? { heading: seed.heading, body: seed.body }
-        : { heading: `${seed.heading}（续 ${round}）`, body: `${seed.body}（本节内容较长，切分为第 ${i + 1} 个片段，前文接 chunk #${String(i).padStart(3, '0')}。）` },
-    )
-  }
-  return out
-}
-
 /**
  * 「项目知识库」子 tab：收录清单 + 索引状态 + 检索测试。
- * 状态机（Mock 定时推进）：off → pending → 600ms → indexing → 1200ms → indexed；
- * failed/stale/indexed → 重建/重试 → indexing → indexed；indexed → 文档更新 → stale；关 → off（清零）。
+ * 检索链路：FTS5 trigram（中文 ≥3 字）+ 短词 LIKE 兜底 + 可选向量，RRF 融合。
  */
-export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPanelProps) {
-  const { docs, folders } = knowledge
-  /** 最新 docs 的 ref（setTimeout 回调里读最新状态，避免闭包旧值卡状态机） */
-  const docsRef = useRef(docs)
-  docsRef.current = docs
-  // 目录树选中（只读：全部 / 各目录 / 未分组）
-  const [selectedFolder, setSelectedFolder] = useState<string>(ALL)
-  // 过滤分段 + 搜索
+export default function KbIndexPanel({ projectId }: KbIndexPanelProps) {
+  const [docs, setDocs] = useState<SyncDoc[]>([])
+  const [status, setStatus] = useState<KbStatus | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [filter, setFilter] = useState<FilterKey>('all')
   const [keyword, setKeyword] = useState('')
-  // 弹层：索引详情 / 检索测试 / 批量菜单
-  const [detailId, setDetailId] = useState<string | null>(null)
-  /** 索引详情片段分页页码（1 起） */
-  const [chunkPage, setChunkPage] = useState(1)
-  const [retrievalOpen, setRetrievalOpen] = useState(false)
-  const [batchOpen, setBatchOpen] = useState(false)
-  const batchRef = useRef<HTMLDivElement>(null)
-  // 检索测试状态
-  const [query, setQuery] = useState('多视窗 窗格')
-  const [searching, setSearching] = useState(false)
-  const [searchDone, setSearchDone] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState<string>(ALL)
+  const [collapsed, setCollapsed] = useState<string[]>([])
+  const [busyDoc, setBusyDoc] = useState('')
+  /** 批量收录进行中（后端逐篇拉正文+建索引，靠轮询收敛） */
+  const [collecting, setCollecting] = useState(false)
 
-  /* ---------- 统计（实时聚合） ---------- */
+  // 详情：片段
+  const [detailId, setDetailId] = useState<string | null>(null)
+  const [chunks, setChunks] = useState<KbChunk[]>([])
+  const [chunkPage, setChunkPage] = useState(0)
+  const [chunkLoading, setChunkLoading] = useState(false)
+
+  // 检索测试
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [result, setResult] = useState<KbSearchResult | null>(null)
+  const [rerankOn, setRerankOn] = useState(false)
+
+  // 索引设置
+  const [configOpen, setConfigOpen] = useState(false)
+  const [configForm, setConfigForm] = useState<KbConfig & { apiKey: string }>({
+    baseUrl: '', model: '', dim: 0, glossary: '', visionModel: '', rerankModel: '', hasKey: false, apiKey: '',
+  })
+  const [savingConfig, setSavingConfig] = useState(false)
+
+  const refresh = useCallback(async () => {
+    try {
+      const [docRes, statusRes] = await Promise.all([
+        docSyncApi.docs(projectId),
+        kbApi.status(projectId),
+      ])
+      setDocs(docRes.docs)
+      setStatus(statusRes)
+      setError('')
+    } catch (err) {
+      setError(errText(err))
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    setLoading(true)
+    void refresh().finally(() => setLoading(false))
+  }, [refresh])
+
+  /** 索引/拉取/批量收录中时轮询 */
+  useEffect(() => {
+    const busy = collecting || (status?.indexing || 0) > 0 || docs.some((d) => d.kbState === 'fetching')
+    if (!busy) return
+    const timer = window.setInterval(() => { void refresh() }, 3000)
+    return () => window.clearInterval(timer)
+  }, [status, docs, refresh, collecting])
+
+  /** 批量收录结束（没有剩余未收录、也没有在处理中的文档） */
+  useEffect(() => {
+    if (!collecting || !status) return
+    const { off, fetching, ready, indexed } = status.counts
+    if (off === 0 && fetching === 0 && ready === 0 && (status.indexing || 0) === 0 && indexed > 0) {
+      setCollecting(false)
+    }
+  }, [collecting, status])
+
+  /** 兜底：10 分钟后停止轮询，避免个别失败文档导致一直转 */
+  useEffect(() => {
+    if (!collecting) return
+    const timer = window.setTimeout(() => setCollecting(false), 10 * 60 * 1000)
+    return () => window.clearTimeout(timer)
+  }, [collecting])
+
+  /* ---------- 统计 ---------- */
   const stats = useMemo(() => {
-    const included = docs.filter((d) => isIndexable(stateOf(d)))
-    const indexed = docs.filter((d) => ['indexed', 'stale'].includes(stateOf(d)))
-    const indexing = docs.filter((d) => stateOf(d) === 'indexing')
-    const pending = docs.filter((d) => stateOf(d) === 'pending')
-    const failed = docs.filter((d) => stateOf(d) === 'failed')
-    const attention = failed.length + docs.filter((d) => stateOf(d) === 'stale').length + pending.length
-    const chunks = indexed.reduce((sum, d) => sum + (d.chunks ?? 0), 0)
-    return { total: docs.length, included: included.length, indexed: indexed.length, indexing: indexing.length + pending.length, failed: failed.length, chunks, attention }
+    const counts = status?.counts
+    if (counts) return counts
+    const ready = docs.filter((d) => stateOf(d) === 'ready').length
+    const indexed = docs.filter((d) => stateOf(d) === 'indexed').length
+    const stale = docs.filter((d) => stateOf(d) === 'stale').length
+    const fetching = docs.filter((d) => stateOf(d) === 'fetching').length
+    const failed = docs.filter((d) => stateOf(d) === 'failed').length
+    const off = docs.filter((d) => stateOf(d) === 'off').length
+    return { included: docs.length - off, indexed, ready, stale, fetching, failed, off }
+  }, [status, docs])
+
+  /* ---------- 目录树 ---------- */
+  const folderPaths = useMemo(() => {
+    const set = new Set<string>()
+    for (const doc of docs) {
+      if (!doc.parentPath) continue
+      const parts = doc.parentPath.split('/')
+      for (let i = 1; i <= parts.length; i += 1) set.add(parts.slice(0, i).join('/'))
+    }
+    return [...set]
   }, [docs])
 
-  /* ---------- 目录树（只读，含未分组聚合） ---------- */
-  const rootFolders = folders.filter((f) => !f.parentId)
-  /** 目录内文档（仅看 folderId 精确匹配；树为两层平铺不递归） */
-  const docsInFolder = (folderId: string) => folderId === UNGROUPED
-    ? docs.filter((d) => !d.folderId)
-    : docs.filter((d) => d.folderId === folderId)
-  /** 目录节点显示 收录数/总数 */
-  const folderCount = (folderId: string) => {
-    const list = docsInFolder(folderId)
-    return `${list.filter((d) => isIndexable(stateOf(d))).length}/${list.length}`
-  }
+  const childrenOf = (path: string) => folderPaths.filter((p) => parentOf(p) === path)
+  const docsIn = (path: string) => docs.filter((d) => (
+    path === '' ? true : d.parentPath === path || d.parentPath.startsWith(`${path}/`)
+  ))
 
-  /* ---------- 列表过滤 ---------- */
   const visibleDocs = useMemo(() => {
-    let list = docs
-    if (selectedFolder === ALL) {
-      // 全部
-    } else {
-      list = docsInFolder(selectedFolder)
-    }
-    if (filter === 'included') list = list.filter((d) => isIndexable(stateOf(d)))
-    if (filter === 'excluded') list = list.filter((d) => !isIndexable(stateOf(d)))
-    if (filter === 'attention') list = list.filter((d) => ['failed', 'stale', 'pending'].includes(stateOf(d)))
+    let list = selectedFolder === ALL
+      ? docs
+      : selectedFolder === UNGROUPED
+        ? docs.filter((d) => !d.parentPath)
+        : docsIn(selectedFolder)
+
+    if (filter === 'included') list = list.filter((d) => stateOf(d) !== 'off')
+    if (filter === 'excluded') list = list.filter((d) => stateOf(d) === 'off')
+    if (filter === 'attention') list = list.filter((d) => ['failed', 'stale', 'ready', 'fetching'].includes(stateOf(d)))
+
     const kw = keyword.trim().toLowerCase()
-    if (kw) list = list.filter((d) => d.title.toLowerCase().includes(kw) || d.sourceRef.toLowerCase().includes(kw))
+    if (kw) list = list.filter((d) => d.title.toLowerCase().includes(kw) || d.parentPath.toLowerCase().includes(kw))
     return list
-  }, [docs, selectedFolder, filter, keyword]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [docs, selectedFolder, filter, keyword, folderPaths]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const attentionCount = stats.attention
+  /* ---------- 操作 ---------- */
 
-  /* ---------- 状态机写回 ---------- */
-  /**
-   * 写回单文档 patch。读最新 docs 用 docsRef（定时器闭包里的 knowledge 是旧值，直接读会卡状态机）；
-   * 父级 onUpdateKnowledge 为对象式更新（ProjectDetail → onUpdateProject 函数式 setProjects，状态总是最新）。
-   */
-  const patchDoc = (id: string, patch: Partial<KbDoc>) => {
-    const latest = docsRef.current
-    onUpdateKnowledge({
-      ...knowledge,
-      docs: latest.map((d) => (d.id === id ? { ...d, ...patch } : d)),
-    })
-  }
-
-  /** 读最新文档 */
-  const readDoc = (id: string): KbDoc | null => docsRef.current.find((d) => d.id === id) ?? null
-
-  /** 步进一个文档的状态机（setTimeout 链；演示用，写回父级 state） */
-  const advance = (id: string) => {
-    const doc = readDoc(id)
-    if (!doc) return
-    const s = stateOf(doc)
-    if (s === 'off') {
-      patchDoc(id, { indexState: 'pending', chunks: 0, indexedAt: undefined, errorText: undefined })
-      window.setTimeout(() => {
-        const cur = readDoc(id)
-        if (cur && stateOf(cur) === 'pending') {
-          patchDoc(id, { indexState: 'indexing' })
-          window.setTimeout(() => {
-            const c2 = readDoc(id)
-            if (c2 && stateOf(c2) === 'indexing') {
-              patchDoc(id, { indexState: 'indexed', chunks: 40 + Math.floor(Math.random() * 21), indexedAt: nowStamp() })
-            }
-          }, 1200)
-        }
-      }, 600)
-    } else {
-      // 重建 / 重试：failed / stale / indexed / indexing → indexing → indexed（演示一律成功）
-      patchDoc(id, { indexState: 'indexing', errorText: undefined })
-      window.setTimeout(() => {
-        const cur = readDoc(id)
-        if (cur && stateOf(cur) === 'indexing') {
-          patchDoc(id, { indexState: 'indexed', chunks: 40 + Math.floor(Math.random() * 21), indexedAt: nowStamp() })
-        }
-      }, 1200)
+  const rebuildAll = async () => {
+    try {
+      await kbApi.index(projectId)
+      await refresh()
+    } catch (err) {
+      setError(errText(err))
     }
   }
 
-  /** 收录开关 */
-  const handleToggle = (doc: KbDoc) => {
-    const s = stateOf(doc)
-    if (s === 'off') {
-      advance(doc.id)
-    } else {
-      patchDoc(doc.id, { indexState: 'off', chunks: 0, indexedAt: undefined, errorText: undefined })
-    }
-  }
-
-  /** 重建/重试（详情弹窗） */
-  const handleRebuild = (doc: KbDoc) => {
-    advance(doc.id)
-  }
-
-  /** 模拟文档更新（详情弹窗，演示状态机 indexed → stale） */
-  const handleSimulateUpdate = (doc: KbDoc) => {
-    patchDoc(doc.id, {
-      indexState: 'stale',
-      updatedAt: nowStamp().slice(0, 5),
-      errorText: '文档已更新，索引过期，需重建',
-    })
-  }
-
-  /** 在飞书中打开（Mock 外链） */
-  const openInFeishu = (doc: KbDoc) => {
-    const url = doc.sourceRef.startsWith('http') ? doc.sourceRef : `https://feishu.cn/wiki/${doc.sourceRef || doc.id}`
-    window.open(url, '_blank', 'noopener')
-  }
-
-  /* ---------- 批量操作 ---------- */
-  const batchCollectAll = () => {
-    docs.filter((d) => stateOf(d) === 'off').forEach((d) => advance(d.id))
-    setBatchOpen(false)
-  }
-  const batchRebuildAll = () => {
-    docs.filter((d) => ['indexed', 'stale', 'failed'].includes(stateOf(d))).forEach((d) => advance(d.id))
-    setBatchOpen(false)
-  }
-  const batchOffAll = () => {
-    onUpdateKnowledge({
-      ...knowledge,
-      docs: docs.map((d) => isIndexable(stateOf(d))
-        ? { ...d, indexState: 'off' as const, chunks: 0, indexedAt: undefined, errorText: undefined }
-        : d),
-    })
-    setBatchOpen(false)
-  }
-
-  // 批量菜单外部点击关闭
-  useEffect(() => {
-    if (!batchOpen) return
-    const close = (e: MouseEvent) => {
-      if (batchRef.current && !batchRef.current.contains(e.target as Node)) setBatchOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
-  }, [batchOpen])
-
-  /* ---------- 检索测试（Mock：关键词包含匹配已索引文档） ---------- */
-  const indexedDocs = docs.filter((d) => ['indexed', 'stale'].includes(stateOf(d)))
-
-  const searchResults = useMemo(() => {
-    if (!searchDone) return null
-    const terms = query.trim().split(/\s+/).filter(Boolean)
-    if (terms.length === 0) return []
-    const hits: { doc: KbDoc; body: string; score: number }[] = []
-    for (const doc of indexedDocs) {
-      const sections = [
-        ...doc.content.map((c) => `${c.heading}：${c.body}`),
-        doc.summary,
-      ]
-      for (const body of sections) {
-        const hitTerms = terms.filter((t) => body.toLowerCase().includes(t.toLowerCase()))
-        if (hitTerms.length > 0) {
-          hits.push({ doc, body, score: 0.6 + 0.12 * hitTerms.length })
-        }
+  /** 把已同步但还没收录的文档批量拉正文 + 建索引 */
+  const collectAll = async () => {
+    try {
+      const res = await kbApi.collect(projectId)
+      if (res.queued > 0) {
+        setCollecting(true)
+        await refresh()
       }
+    } catch (err) {
+      setError(errText(err))
     }
-    return hits.sort((a, b) => b.score - a.score).slice(0, 8)
-  }, [searchDone, query, indexedDocs]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const runSearch = () => {
-    setSearching(true)
-    setSearchDone(false)
-    window.setTimeout(() => {
-      setSearching(false)
-      setSearchDone(true)
-    }, 800)
   }
 
-  const detailDoc = docs.find((d) => d.id === detailId) ?? null
+  const rebuildDoc = async (doc: SyncDoc) => {
+    setBusyDoc(doc.id)
+    try {
+      await kbApi.index(projectId, doc.id)
+      await refresh()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusyDoc('')
+    }
+  }
 
-  /* ---------- 渲染 ---------- */
+  const refetchDoc = async (doc: SyncDoc) => {
+    setBusyDoc(doc.id)
+    try {
+      await docSyncApi.addToKb(projectId, doc.id)
+      await refresh()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusyDoc('')
+    }
+  }
+
+  /** 收录开关：未收录 → 拉正文并建索引；已收录 → 移出 */
+  const toggleDoc = async (doc: SyncDoc) => {
+    if (stateOf(doc) === 'off') await refetchDoc(doc)
+    else await removeDoc(doc)
+  }
+
+  const removeDoc = async (doc: SyncDoc) => {
+    setBusyDoc(doc.id)
+    try {
+      await docSyncApi.removeFromKb(projectId, doc.id)
+      setDetailId(null)
+      await refresh()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusyDoc('')
+    }
+  }
+
+  const runSearch = async () => {
+    if (!query.trim() || searching) return
+    setSearching(true)
+    setResult(null)
+    try {
+      setResult(await kbApi.search(projectId, query.trim(), 8, rerankOn))
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const openConfig = () => {
+    const cfg = status?.config
+    setConfigForm({
+      baseUrl: cfg?.baseUrl || '',
+      model: cfg?.model || '',
+      dim: cfg?.dim || 0,
+      glossary: cfg?.glossary || '',
+      visionModel: cfg?.visionModel || '',
+      rerankModel: cfg?.rerankModel || '',
+      hasKey: Boolean(cfg?.hasKey),
+      apiKey: '',
+    })
+    setConfigOpen(true)
+  }
+
+  const saveConfig = async () => {
+    setSavingConfig(true)
+    try {
+      await kbApi.saveConfig(projectId, {
+        baseUrl: configForm.baseUrl,
+        model: configForm.model,
+        dim: Number(configForm.dim) || 0,
+        glossary: configForm.glossary,
+        visionModel: configForm.visionModel,
+        rerankModel: configForm.rerankModel,
+        ...(configForm.apiKey ? { apiKey: configForm.apiKey } : {}),
+      })
+      setConfigOpen(false)
+      await refresh()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setSavingConfig(false)
+    }
+  }
+
+  /** 打开详情时加载片段 */
+  useEffect(() => {
+    if (!detailId) { setChunks([]); return }
+    let cancelled = false
+    setChunkLoading(true)
+    kbApi.chunks(projectId, detailId, CHUNK_PAGE, chunkPage * CHUNK_PAGE)
+      .then((res) => { if (!cancelled) setChunks(res.chunks) })
+      .catch((err) => { if (!cancelled) { setChunks([]); setError(errText(err)) } })
+      .finally(() => { if (!cancelled) setChunkLoading(false) })
+    return () => { cancelled = true }
+  }, [detailId, chunkPage, projectId])
+
+  const detailDoc = docs.find((d) => d.id === detailId) || null
+
+  const renderFolder = (path: string, depth: number) => {
+    const children = childrenOf(path)
+    const isCollapsed = collapsed.includes(path)
+    return (
+      <div key={path}>
+        <button
+          type="button"
+          className={`kbi-tree-item${selectedFolder === path ? ' active' : ''}`}
+          style={{ paddingLeft: 8 + depth * 14 }}
+          onClick={() => setSelectedFolder(path)}
+        >
+          {children.length > 0 ? (
+            <span
+              className={`fs-tree-caret${isCollapsed ? '' : ' open'}`}
+              title={isCollapsed ? '展开' : '折叠'}
+              onClick={(e) => {
+                e.stopPropagation()
+                setCollapsed(isCollapsed ? collapsed.filter((p) => p !== path) : [...collapsed, path])
+              }}
+            >
+              <ChevronRightIcon size={11} />
+            </span>
+          ) : <span className="fs-tree-caret-sp" />}
+          <FolderIcon size={14} />
+          <span className="kbi-tree-name">{path.split('/').pop()}</span>
+          <span className="kbi-tree-count">{docsIn(path).length}</span>
+        </button>
+        {!isCollapsed && children.map((child) => renderFolder(child, depth + 1))}
+      </div>
+    )
+  }
+
   return (
     <div className="kbindex-panel">
-      {/* ① 统计条：chips + 检索测试 + 批量 */}
       <div className="kbindex-stats">
-        <span className="kbi-chip plain">收录 <b>{stats.included}/{stats.total}</b></span>
+        <span className="kbi-chip plain">收录 <b>{stats.included}</b></span>
         <span className="kbi-chip ok"><span className="kbi-dot" />已索引 <b>{stats.indexed}</b></span>
-        {stats.indexing > 0 && (
-          <span className="kbi-chip run"><span className="kbi-dot" />索引中 <b>{stats.indexing}</b></span>
+        {stats.off > 0 && <span className="kbi-chip plain">未收录 <b>{stats.off}</b></span>}
+        {stats.ready > 0 && <span className="kbi-chip run"><span className="kbi-dot" />待索引 <b>{stats.ready}</b></span>}
+        {stats.fetching > 0 && <span className="kbi-chip run"><span className="kbi-dot" />拉取中 <b>{stats.fetching}</b></span>}
+        {stats.stale > 0 && <span className="kbi-chip plain">待更新 <b>{stats.stale}</b></span>}
+        {stats.failed > 0 && <span className="kbi-chip err"><span className="kbi-dot" />失败 <b>{stats.failed}</b></span>}
+        <span className="kbi-chip plain">片段 <b>{status?.chunks.chunks ?? 0}</b></span>
+        {status?.config.model && (
+          <span className="kbi-chip plain">向量 <b>{status.chunks.embeddedCurrent}</b></span>
         )}
-        {stats.failed > 0 && (
-          <span className="kbi-chip err"><span className="kbi-dot" />失败 <b>{stats.failed}</b></span>
+        {(status?.chunks.embeddingStale ?? 0) > 0 && (
+          <span className="kbi-chip err">待重嵌 <b>{status?.chunks.embeddingStale}</b></span>
         )}
-        <span className="kbi-chip plain">片段 <b>{stats.chunks}</b></span>
+        <span className="kbi-chip plain">覆盖 <b>{Math.round((status?.coverage ?? 0) * 100)}%</b></span>
         <span className="kbindex-stats-acts">
-          <button type="button" className="kbi-act primary" onClick={() => { setRetrievalOpen(true); setSearchDone(false) }}>
+          {stats.off > 0 && (
+            <button type="button" className="kbi-act primary" onClick={() => void collectAll()}>
+              收录全部（{stats.off}）
+            </button>
+          )}
+          <button type="button" className="kbi-act primary" onClick={() => { setSearchOpen(true); setResult(null) }}>
             检索测试
           </button>
-          <div className="kbi-batch-wrap" ref={batchRef}>
-            <button type="button" className="kbi-act" onClick={() => setBatchOpen((v) => !v)}>⋯ 批量</button>
-            {batchOpen && (
-              <div className="kbi-batch-menu">
-                <button type="button" onClick={batchCollectAll}>＋ 收录全部未收录</button>
-                <button type="button" onClick={batchRebuildAll}>↻ 重建全部索引</button>
-                <button type="button" className="danger" onClick={batchOffAll}>✕ 取消全部收录</button>
-              </div>
-            )}
-          </div>
+          <button type="button" className="kbi-act" onClick={() => void rebuildAll()}>重建索引</button>
+          <button type="button" className="kbi-act" onClick={openConfig}>索引设置</button>
         </span>
       </div>
 
-      {/* ② 双栏：左目录树（只读） + 右清单 */}
+      {error && <div className="doclib-error">{error}</div>}
+
       <div className="kbindex-two-col">
         <div className="kbi-tree">
-          <div className="kbi-tree-title">目录（只读）</div>
+          <div className="kbi-tree-title">目录</div>
           <button
             type="button"
             className={`kbi-tree-item${selectedFolder === ALL ? ' active' : ''}`}
@@ -335,21 +395,10 @@ export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPa
           >
             <DocIcon size={14} />
             <span className="kbi-tree-name">全部文档</span>
-            <span className="kbi-tree-count"><b>{stats.included}</b>/{stats.total}</span>
+            <span className="kbi-tree-count">{docs.length}</span>
           </button>
-          {rootFolders.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              className={`kbi-tree-item${selectedFolder === f.id ? ' active' : ''}`}
-              onClick={() => setSelectedFolder(f.id)}
-            >
-              <FolderIcon size={14} />
-              <span className="kbi-tree-name">{f.name}</span>
-              <span className="kbi-tree-count">{folderCount(f.id)}</span>
-            </button>
-          ))}
-          {docs.some((d) => !d.folderId) && (
+          {childrenOf('').map((path) => renderFolder(path, 0))}
+          {docs.some((d) => !d.parentPath) && (
             <button
               type="button"
               className={`kbi-tree-item${selectedFolder === UNGROUPED ? ' active' : ''}`}
@@ -357,7 +406,7 @@ export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPa
             >
               <FolderIcon size={14} />
               <span className="kbi-tree-name">未分组</span>
-              <span className="kbi-tree-count">{folderCount(UNGROUPED)}</span>
+              <span className="kbi-tree-count">{docs.filter((d) => !d.parentPath).length}</span>
             </button>
           )}
         </div>
@@ -372,7 +421,7 @@ export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPa
                   className={filter === f.key ? 'active' : ''}
                   onClick={() => setFilter(f.key)}
                 >
-                  {f.label}{f.key === 'attention' && attentionCount > 0 ? ` ${attentionCount}` : ''}
+                  {f.label}
                 </button>
               ))}
             </div>
@@ -386,12 +435,16 @@ export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPa
             </div>
           </div>
           <div className="kbi-list-body">
-            {visibleDocs.length === 0 && <div className="kbi-empty">没有匹配的文档</div>}
+            {loading && <div className="kbi-empty">正在加载…</div>}
+            {!loading && docs.length === 0 && (
+              <div className="kbi-empty">还没有同步到文档。先去「文档」子 tab 添加同步源并同步。</div>
+            )}
+            {!loading && docs.length > 0 && visibleDocs.length === 0 && <div className="kbi-empty">没有匹配的文档</div>}
             {visibleDocs.map((doc) => {
-              const s = stateOf(doc)
-              const meta = STATE_META[s]
+              const state = stateOf(doc)
+              const meta = STATE_META[state]
               return (
-                <div key={doc.id} className="kbi-row" onClick={() => { setDetailId(doc.id); setChunkPage(1) }}>
+                <div key={doc.id} className="kbi-row" onClick={() => { setDetailId(doc.id); setChunkPage(0) }}>
                   <DocIcon size={16} className="kbi-row-icon" />
                   <span className="kbi-row-main">
                     <span className="kbi-row-title">
@@ -399,20 +452,19 @@ export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPa
                       <span className={`kbi-badge ${meta.cls}`}>{meta.label}</span>
                     </span>
                     <span className="kbi-row-sub">
-                      {doc.sourceRef || doc.source}
-                      {s === 'indexed' || s === 'stale' ? ` · 片段 ${doc.chunks ?? 0}` : ''}
-                      {doc.indexedAt && s === 'indexed' ? ` · ${doc.indexedAt}` : ''}
-                      {s === 'stale' ? ' · 索引已过期' : ''}
-                      {s === 'failed' && doc.errorText ? ` · ${doc.errorText.split('：')[0]}` : ''}
+                      {TYPE_LABEL[doc.externalType] || doc.externalType}
+                      {doc.parentPath ? ` · ${doc.parentPath}` : ''}
+                      {doc.kbState === 'indexed' && doc.kbFetchedAt ? ` · 索引于 ${fmtTime(doc.kbFetchedAt)}` : ''}
+                      {(state === 'failed' || state === 'stale') && doc.kbError ? ` · ${doc.kbError}` : ''}
                     </span>
                   </span>
                   <span
-                    className={`kbi-toggle${isIndexable(s) ? '' : ' off'}`}
+                    className={`kbi-toggle${state === 'off' ? ' off' : ''}`}
                     role="switch"
-                    aria-checked={isIndexable(s)}
-                    aria-label={`收录 ${doc.title}`}
-                    title={isIndexable(s) ? '点击取消收录（清零片段）' : '点击收录并建立索引'}
-                    onClick={(e) => { e.stopPropagation(); handleToggle(doc) }}
+                    aria-checked={state !== 'off'}
+                    aria-label={`${state === 'off' ? '收录' : '移出知识库'} ${doc.title}`}
+                    title={state === 'off' ? '点击收录：拉取正文并建立索引' : '点击移出知识库（删除正文与索引）'}
+                    onClick={(e) => { e.stopPropagation(); void toggleDoc(doc) }}
                   />
                 </div>
               )
@@ -421,13 +473,10 @@ export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPa
         </div>
       </div>
 
-      {/* ③ 索引详情弹窗 */}
+      {/* 详情：元信息 + 片段 */}
       {detailDoc && (
-        <div
-          className="modal-overlay"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setDetailId(null) }}
-        >
-          <div className="modal-box kbi-detail-modal" role="dialog" aria-modal="true" aria-label="索引详情">
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setDetailId(null) }}>
+          <div className="modal-box kbi-detail-modal" role="dialog" aria-modal="true" aria-label="文档索引详情">
             <div className="modal-head">
               <span className="modal-title">索引详情</span>
               <button type="button" className="modal-close" aria-label="关闭" onClick={() => setDetailId(null)}>×</button>
@@ -440,155 +489,194 @@ export default function KbIndexPanel({ knowledge, onUpdateKnowledge }: KbIndexPa
                 </span>
               </div>
               <div className="kbi-detail-meta">
-                路径：{detailDoc.sourceRef || detailDoc.source}（{detailDoc.source}）<br />
-                片段：{detailDoc.chunks ?? 0} · 更新于 {detailDoc.updatedAt}
-                {detailDoc.indexedAt && <> · 最近索引 {detailDoc.indexedAt}</>}
+                类型：{TYPE_LABEL[detailDoc.externalType] || detailDoc.externalType} · 路径：{detailDoc.parentPath || '根目录'}<br />
+                飞书修改：{fmtTime(detailDoc.modifiedAt)}
+                {detailDoc.kbFetchedAt && <> · 正文拉取：{fmtTime(detailDoc.kbFetchedAt)}</>}
               </div>
-              {stateOf(detailDoc) === 'failed' && detailDoc.errorText && (
-                <p className="kbi-detail-error">失败原因：{detailDoc.errorText}</p>
-              )}
-              {stateOf(detailDoc) === 'stale' && (
-                <p className="kbi-detail-error stale">{detailDoc.errorText || '文档已更新，索引过期，需重建'}</p>
+              {(stateOf(detailDoc) === 'failed' || stateOf(detailDoc) === 'stale') && detailDoc.kbError && (
+                <p className={`kbi-detail-error${stateOf(detailDoc) === 'stale' ? ' stale' : ''}`}>{detailDoc.kbError}</p>
               )}
               <div className="kbi-detail-acts">
-                {stateOf(detailDoc) === 'failed' ? (
-                  <button type="button" className="kbi-act primary" onClick={() => handleRebuild(detailDoc)}>↻ 重试索引</button>
+                {stateOf(detailDoc) === 'off' ? (
+                  <button type="button" className="kbi-act primary" disabled={busyDoc === detailDoc.id} onClick={() => void refetchDoc(detailDoc)}>
+                    ＋ 收录并建索引
+                  </button>
                 ) : (
-                  <button
-                    type="button"
-                    className="kbi-act primary"
-                    disabled={stateOf(detailDoc) === 'indexing' || stateOf(detailDoc) === 'pending'}
-                    onClick={() => handleRebuild(detailDoc)}
-                  >
-                    ↻ 重建索引
-                  </button>
+                  <>
+                    <button type="button" className="kbi-act primary" disabled={busyDoc === detailDoc.id} onClick={() => void rebuildDoc(detailDoc)}>
+                      ↻ 重建索引
+                    </button>
+                    <button type="button" className="kbi-act" disabled={busyDoc === detailDoc.id} onClick={() => void refetchDoc(detailDoc)}>
+                      ⤓ 重新拉取正文
+                    </button>
+                  </>
                 )}
-                <button type="button" className="kbi-act" onClick={() => openInFeishu(detailDoc)}>⇱ 在飞书中打开</button>
-                {stateOf(detailDoc) === 'indexed' && (
-                  <button type="button" className="kbi-act" onClick={() => handleSimulateUpdate(detailDoc)}>
-                    ✎ 模拟文档更新
+                <button type="button" className="kbi-act" onClick={() => {
+                  const url = detailDoc.url || `https://feishu.cn/wiki/${detailDoc.externalToken}`
+                  window.open(url, '_blank', 'noopener')
+                }}>⇱ 在飞书中打开</button>
+                {stateOf(detailDoc) !== 'off' && (
+                  <button type="button" className="kbi-act" disabled={busyDoc === detailDoc.id} onClick={() => void removeDoc(detailDoc)}>
+                    ✕ 移出知识库
                   </button>
                 )}
               </div>
+
               <div className="kbi-chunk-title">
-                片段预览（共 {detailDoc.chunks ?? 0} 条）
+                片段{chunkLoading ? '（加载中…）' : `（第 ${chunkPage + 1} 页）`}
               </div>
-              {stateOf(detailDoc) === 'off' && (
-                <p className="kbi-detail-empty">该文档尚未收录，打开右侧收录开关后自动建立索引。</p>
+              {!chunkLoading && chunks.length === 0 && (
+                <p className="kbi-detail-empty">
+                  {stateOf(detailDoc) === 'off' ? '未收录，点上方「收录并建索引」。' : '还没有片段。点「重建索引」生成。'}
+                </p>
               )}
-              {(stateOf(detailDoc) === 'indexing' || stateOf(detailDoc) === 'pending') && (
-                <p className="kbi-detail-empty">正在建立索引，完成后可预览片段……</p>
-              )}
-              {stateOf(detailDoc) === 'failed' && (
-                <p className="kbi-detail-empty">索引失败，重试成功后可预览片段。</p>
-              )}
-              {['indexed', 'stale'].includes(stateOf(detailDoc)) && (() => {
-                const chunks = chunkListOf(detailDoc)
-                const pageCount = Math.max(1, Math.ceil(chunks.length / CHUNK_PAGE_SIZE))
-                const page = Math.min(chunkPage, pageCount)
-                const start = (page - 1) * CHUNK_PAGE_SIZE
-                return chunks.slice(start, start + CHUNK_PAGE_SIZE).map((sec, i) => (
-                  <div key={start + i} className="kbi-chunk-card">
-                    <div className="kbi-chunk-head">
-                      <span className="mono">chunk #{String(start + i + 1).padStart(3, '0')}</span>
-                      <span>·</span>
-                      <span>{sec.heading}</span>
-                    </div>
-                    <p className="kbi-chunk-body">{sec.body}</p>
+              {chunks.map((chunk) => (
+                <div key={chunk.id} className="kbi-chunk-card">
+                  <div className="kbi-chunk-head">
+                    <span className="mono">#{String(chunk.ordinal + 1).padStart(3, '0')}</span>
+                    <span>·</span>
+                    <span>{chunk.sectionPath || '无标题'}</span>
+                    <span className="kbi-chunk-meta">{chunk.charCount} 字{chunk.hasEmbedding ? ' · 已向量化' : ''}</span>
                   </div>
-                ))
-              })()}
-            </div>
-            {/* 分页条：固定弹窗底部 footer（滚动区外，翻页永远可见） */}
-            {['indexed', 'stale'].includes(stateOf(detailDoc)) && (() => {
-              const chunks = chunkListOf(detailDoc)
-              const pageCount = Math.max(1, Math.ceil(chunks.length / CHUNK_PAGE_SIZE))
-              const page = Math.min(chunkPage, pageCount)
-              return (
-                <div className="kbi-detail-foot">
-                  <span className="kbi-chunk-pager-info">
-                    共 {chunks.length} 条 · 第 {page} / {pageCount} 页 · 每页 {CHUNK_PAGE_SIZE} 条
-                  </span>
-                  <span className="kbi-chunk-pager-btns">
-                    <button
-                      type="button"
-                      className="kbi-act"
-                      disabled={page <= 1}
-                      onClick={() => setChunkPage(page - 1)}
-                    >
-                      ‹ 上一页
-                    </button>
-                    {pageNumbers(page, pageCount).map((p, idx) => (
-                      p === 0 ? (
-                        <span key={`gap-${idx}`} className="kbi-chunk-gap">…</span>
-                      ) : (
-                        <button
-                          key={p}
-                          type="button"
-                          className={`kbi-act num${p === page ? ' primary' : ''}`}
-                          onClick={() => setChunkPage(p)}
-                        >
-                          {p}
-                        </button>
-                      )
-                    ))}
-                    <button
-                      type="button"
-                      className="kbi-act"
-                      disabled={page >= pageCount}
-                      onClick={() => setChunkPage(page + 1)}
-                    >
-                      下一页 ›
-                    </button>
-                  </span>
+                  <pre className="kbi-chunk-body">{chunk.content}</pre>
                 </div>
-              )
-            })()}
+              ))}
+            </div>
+            <div className="kbi-detail-foot">
+              <span className="kbi-chunk-pager-info">每页 {CHUNK_PAGE} 个片段</span>
+              <span className="kbi-chunk-pager-btns">
+                <button type="button" className="kbi-act" disabled={chunkPage === 0} onClick={() => setChunkPage((p) => p - 1)}>‹ 上一页</button>
+                <button type="button" className="kbi-act" disabled={chunks.length < CHUNK_PAGE} onClick={() => setChunkPage((p) => p + 1)}>下一页 ›</button>
+              </span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ④ 检索测试弹窗 */}
-      {retrievalOpen && (
-        <div
-          className="modal-overlay"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setRetrievalOpen(false) }}
-        >
+      {/* 检索测试 */}
+      {searchOpen && (
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setSearchOpen(false) }}>
           <div className="modal-box kbi-ret-modal" role="dialog" aria-modal="true" aria-label="检索测试">
             <div className="modal-head">
               <span className="modal-title">检索测试</span>
-              <button type="button" className="modal-close" aria-label="关闭" onClick={() => setRetrievalOpen(false)}>×</button>
+              <button type="button" className="modal-close" aria-label="关闭" onClick={() => setSearchOpen(false)}>×</button>
             </div>
             <div className="kbi-ret-query">
               <input
                 value={query}
-                placeholder="输入查询词，测试已索引片段的召回效果"
+                placeholder="输入问题或关键词，例如：灰度发布怎么做"
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') runSearch() }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void runSearch() }}
               />
-              <button type="button" className="kbi-act primary" disabled={searching || !query.trim()} onClick={runSearch}>
-                {searching ? '检索中…' : '测试'}
+              {status?.config.rerankModel && (
+                <button
+                  type="button"
+                  className={`kbi-act${rerankOn ? ' primary' : ''}`}
+                  title="LLM 重排：更慢但首屏更准"
+                  onClick={() => setRerankOn((v) => !v)}
+                >
+                  重排
+                </button>
+              )}
+              <button type="button" className="kbi-act primary" disabled={searching || !query.trim()} onClick={() => void runSearch()}>
+                {searching ? '检索中…' : '检索'}
               </button>
             </div>
-            <p className="kbi-ret-hint">
-              在 {stats.indexed} 篇已索引文档 · {stats.chunks} 个片段中检索（Mock 相似度）
-            </p>
-            {searching && <div className="kbi-ret-status">检索中……</div>}
-            {searchDone && searchResults && searchResults.length === 0 && (
-              <div className="kbi-ret-status">无命中片段，换个查询词试试</div>
-            )}
-            {searchDone && searchResults && searchResults.map((hit, i) => (
-              <div key={i} className="kbi-ret-item">
-                <div className="kbi-ret-head">
-                  <span className="kbi-ret-doc">{hit.doc.title}</span>
-                  <span className={`kbi-badge ${STATE_META[stateOf(hit.doc)].cls}`}>
-                    {STATE_META[stateOf(hit.doc)].label}
-                  </span>
-                  <span className="kbi-ret-score mono">{hit.score.toFixed(2)}</span>
-                </div>
-                <p className="kbi-ret-text">{hit.body}</p>
-              </div>
-            ))}
+            <div className="kbi-ret-body">
+              <p className="kbi-ret-hint">
+                {status?.config.model
+                  ? `关键词 + 语义混合 · 模型 ${status.config.model}`
+                  : '仅关键词检索（未配置嵌入模型）'}
+              </p>
+
+              {result && (
+                <>
+                  <p className="kbi-ret-hint">
+                    命中 {result.chunks.length} 条 · 关键词 {result.routes.bm25} / 短词 {result.routes.like} / 语义 {result.routes.vector}{result.reranked ? ' · 已重排' : ''}
+                  </p>
+                  {result.lowConfidence && (
+                    <div className="kbi-ret-low">未找到足够依据，结果可能不相关。</div>
+                  )}
+                  {result.chunks.map((hit) => (
+                    <div key={hit.id} className="kbi-ret-item">
+                      <div className="kbi-ret-head">
+                        <span className="kbi-ret-doc">{hit.doc.title}</span>
+                        {hit.sectionPath && <span className="kbi-ret-path">{hit.sectionPath}</span>}
+                        {hit.routes.map((r) => (
+                          <span key={r} className="kbi-badge off">{ROUTE_LABEL[r] || r}</span>
+                        ))}
+                        <span className="kbi-ret-score mono">{hit.score.toFixed(3)}</span>
+                        <button
+                          type="button"
+                          className="kbi-ret-open"
+                          title="在飞书中打开"
+                          onClick={() => window.open(hit.doc.url || `https://feishu.cn/wiki/${hit.docId}`, '_blank', 'noopener')}
+                        >
+                          <ExternalIcon size={12} />
+                        </button>
+                      </div>
+                      <pre className="kbi-ret-text">{hit.content}</pre>
+                    </div>
+                  ))}
+                </>
+              )}
+              {!searching && !result && <div className="kbi-ret-status">输入问题后回车，查看命中片段与来源。</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 索引设置 */}
+      {configOpen && (
+        <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setConfigOpen(false) }}>
+          <div className="modal-box kbi-config-modal" role="dialog" aria-modal="true" aria-label="索引设置">
+            <div className="modal-head">
+              <span className="modal-title">索引设置</span>
+              <button type="button" className="modal-close" aria-label="关闭" onClick={() => setConfigOpen(false)}>×</button>
+            </div>
+            <div className="kbi-config-body">
+              <label className="kbi-config-row">
+                <span>嵌入接口</span>
+                <input value={configForm.baseUrl} placeholder="https://api.siliconflow.cn/v1（留空 = 仅关键词）" onChange={(e) => setConfigForm((f) => ({ ...f, baseUrl: e.target.value }))} />
+              </label>
+              <label className="kbi-config-row">
+                <span>模型</span>
+                <input value={configForm.model} placeholder="BAAI/bge-m3" onChange={(e) => setConfigForm((f) => ({ ...f, model: e.target.value }))} />
+              </label>
+              <label className="kbi-config-row">
+                <span>维度</span>
+                <input type="number" value={configForm.dim || ''} placeholder="1024" onChange={(e) => setConfigForm((f) => ({ ...f, dim: Number(e.target.value) || 0 }))} />
+              </label>
+              <label className="kbi-config-row">
+                <span>图片转写</span>
+                <input value={configForm.visionModel} placeholder="Qwen/Qwen3-VL-8B-Instruct（留空 = 图片不收录）" onChange={(e) => setConfigForm((f) => ({ ...f, visionModel: e.target.value }))} />
+              </label>
+              <label className="kbi-config-row">
+                <span>重排模型</span>
+                <input value={configForm.rerankModel} placeholder="Qwen/Qwen2.5-7B-Instruct（留空 = 不重排）" onChange={(e) => setConfigForm((f) => ({ ...f, rerankModel: e.target.value }))} />
+              </label>
+              <label className="kbi-config-row">
+                <span>API Key</span>
+                <input type="password" value={configForm.apiKey} placeholder={configForm.hasKey ? '已配置，留空不修改' : '未配置'} onChange={(e) => setConfigForm((f) => ({ ...f, apiKey: e.target.value }))} />
+              </label>
+              <label className="kbi-config-row kbi-config-col">
+                <span>术语表</span>
+                <textarea
+                  value={configForm.glossary}
+                  placeholder={'每行一条，查询时自动扩展：\nADE=Agent 开发环境'}
+                  onChange={(e) => setConfigForm((f) => ({ ...f, glossary: e.target.value }))}
+                />
+              </label>
+              <p className="kbi-config-hint">
+                留空嵌入接口则只跑关键词检索（FTS5），配置后重建索引才会写入向量。图片与文档内嵌图片需要「图片转写」视觉模型，未配置时图片收录会失败。
+              </p>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="text-btn" onClick={() => setConfigOpen(false)}>取消</button>
+              <button type="button" className="btn-primary" disabled={savingConfig} onClick={() => void saveConfig()}>
+                {savingConfig ? '保存中…' : '保存'}
+              </button>
+            </div>
           </div>
         </div>
       )}

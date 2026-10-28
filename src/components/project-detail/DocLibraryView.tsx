@@ -1,528 +1,672 @@
-import { useState } from 'react'
-import type { DocLibrary, KbFolder, KbDoc } from '../../data/projects'
-import type { FeishuSettings } from '../../data/settings'
-import { DocIcon, ChevronRightIcon, FolderIcon, ExternalIcon, DownloadIcon } from '../icons'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  docSyncApi,
+  type BrowseItem,
+  type DocSource,
+  type DocSourceKind,
+  type DocSyncAuth,
+  type SyncDoc,
+  type SyncRun,
+} from '../../lib/docSyncApi'
+import { DocIcon, ChevronRightIcon, FolderIcon, ExternalIcon, DownloadIcon, PlusIcon } from '../icons'
 import './KbIndexPanel.css'
 import './DocLibraryView.css'
 
 interface DocLibraryViewProps {
-  /** 库数据（「文档」子 tab = project.documents） */
-  library: DocLibrary
-  onUpdateLibrary: (lib: DocLibrary) => void
-  /** 飞书个人授权设置（OAuth 导入流程用；与凭证无关） */
-  feishu: FeishuSettings
-  /** 授权状态写回（授权 / 取消授权，Mock 全局共享） */
-  onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
+  projectId: string
 }
 
-/** 「全部文档」伪目录 id */
-const ALL = '__all__'
-
-const nowStamp = () => {
-  const d = new Date()
-  return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const TYPE_LABEL: Record<string, string> = {
+  docx: '文档',
+  doc: '文档',
+  sheet: '表格',
+  bitable: '多维表格',
+  file: '文件',
+  mindnote: '思维导图',
+  slides: '幻灯片',
 }
 
-/* ================= 飞书 Mock 目录树（多层级） ================= */
+const errText = (err: unknown) => (err instanceof Error ? err.message : String(err))
 
-/** 飞书目录树节点（导入弹窗用） */
-interface FsNode {
-  /** 目录或文档名 */
-  name: string
-  /** 目录：子节点；文档：无 children */
-  children?: FsNode[]
-  /** 文档数（目录行右侧） */
-  count?: number
+const fmtTime = (iso?: string | null) => {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-/** 飞书云文档 Mock 目录（多层级，与原型图一致） */
-const FEISHU_TREE: FsNode[] = [
-  {
-    name: '产品研发', count: 26,
-    children: [
-      {
-        name: '移动端', count: 11,
-        children: [
-          { name: '支付链路时序图说明' },
-          { name: '首页多视窗交互规格' },
-          { name: '结算页灰度方案' },
-        ],
-      },
-      {
-        name: 'Web 端', count: 9,
-        children: [
-          { name: 'PRD v3' },
-          { name: '架构设计说明' },
-        ],
-      },
-      {
-        name: '设计', count: 6,
-        children: [
-          { name: '设计规范 tokens' },
-        ],
-      },
-    ],
-  },
-  {
-    name: '运营', count: 12,
-    children: [
-      { name: '活动复盘 0918' },
-      { name: '增长实验记录' },
-    ],
-  },
-  {
-    name: '知识库', count: 48,
-    children: [
-      { name: '新成员环境搭建指南' },
-      { name: 'API Mock 数据规范' },
-    ],
-  },
-  {
-    name: '研发规范', count: 9,
-    children: [
-      { name: '编码规范' },
-      { name: 'Git 提交规范' },
-    ],
-  },
-  {
-    name: '会议纪要', count: 31,
-    children: [
-      { name: '需求评审 0901' },
-      { name: '周会 0925' },
-    ],
-  },
-]
+/** 知识库收录状态徽标 */
+function kbBadgeOf(doc: SyncDoc): { cls: string; label: string } | null {
+  if (doc.syncStatus === 'failed') return { cls: 'failed', label: '同步失败' }
+  if (doc.kbState === 'fetching') return { cls: 'pending', label: '拉取中' }
+  if (doc.kbState === 'failed') return { cls: 'failed', label: '拉取失败' }
+  if (doc.kbState === 'indexed') return doc.stale ? { cls: 'stale', label: '待更新' } : { cls: 'indexed', label: '已索引' }
+  if (doc.kbState === 'ready') return doc.stale ? { cls: 'stale', label: '待更新' } : { cls: 'pending', label: '待索引' }
+  return null
+}
 
-/** 选中目标：路径数组（如 ['产品研发', '移动端']） */
-type FsPath = string[]
+const parentOf = (path: string) => (path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '')
 
 /**
- * 「文档」子 tab 视图（飞书化）：
- * 左栏多层级目录树 + 右栏文档列表（只读，行尾 ⇗ 跳飞书）+ OAuth 导入弹窗（个人授权 → 选飞书目录；
- * 个人授权与凭证解耦，弹窗无凭证警示条）。
+ * 「文档」子 tab：真实飞书目录 + 文档清单。
+ * 同步只拉清单（元数据），正文在「项目知识库」收录时才拉取。
  */
-export default function DocLibraryView({
-  library, onUpdateLibrary, feishu, onUpdateFeishu,
-}: DocLibraryViewProps) {
-  const { docs, folders } = library
-  // 目录树状态（多层级）
-  const [selectedFolder, setSelectedFolder] = useState<string>(ALL)
-  const [collapsedIds, setCollapsedIds] = useState<string[]>([])
-  // 导入弹窗
-  const [importing, setImporting] = useState(false)
-  const [authorizing, setAuthorizing] = useState(false)
-  /** 多选：勾选的节点路径集合（目录或文档，勾目录 = 导入该目录全部子文档） */
-  const [fsChecked, setFsChecked] = useState<string[]>([])
-  const [fsCollapsed, setFsCollapsed] = useState<string[]>([
-    '产品研发/移动端', '产品研发/Web 端', '产品研发/设计',
-    '运营', '知识库', '研发规范', '会议纪要',
-  ])
-  const [importBusy, setImportBusy] = useState(false)
+export default function DocLibraryView({ projectId }: DocLibraryViewProps) {
+  const [sources, setSources] = useState<DocSource[]>([])
+  const [docs, setDocs] = useState<SyncDoc[]>([])
+  const [activeSource, setActiveSource] = useState('')
+  const [selectedPath, setSelectedPath] = useState('')
+  const [collapsed, setCollapsed] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [runId, setRunId] = useState('')
+  const [run, setRun] = useState<SyncRun | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [menuDoc, setMenuDoc] = useState('')
+  const [busyDoc, setBusyDoc] = useState('')
 
-  /* ---------- 目录树派生逻辑（多层级） ---------- */
-  /** 目录的子孙 id 集合（含自身） */
-  const subtreeIds = (folderId: string): Set<string> => {
-    const ids = new Set<string>([folderId])
-    let grew = true
-    while (grew) {
-      grew = false
-      for (const f of folders) {
-        if (f.parentId && ids.has(f.parentId) && !ids.has(f.id)) {
-          ids.add(f.id)
-          grew = true
+  /* ---------- 数据加载 ---------- */
+
+  const refresh = useCallback(async () => {
+    try {
+      const [sourceRes, docRes] = await Promise.all([
+        docSyncApi.sources(projectId),
+        docSyncApi.docs(projectId, { sourceId: activeSource || undefined }),
+      ])
+      setSources(sourceRes.sources)
+      setDocs(docRes.docs)
+      setError('')
+      if (sourceRes.runningRunId) {
+        setRunId(sourceRes.runningRunId)
+        setSyncing(true)
+      }
+    } catch (err) {
+      setError(errText(err))
+    }
+  }, [projectId, activeSource])
+
+  useEffect(() => {
+    setLoading(true)
+    void refresh().finally(() => setLoading(false))
+  }, [refresh])
+
+  useEffect(() => {
+    setSelectedPath('')
+    setMenuDoc('')
+  }, [activeSource])
+
+  /** 同步进度轮询 */
+  useEffect(() => {
+    if (!syncing || !runId) return
+    let timer = 0
+    let stopped = false
+
+    const tick = async () => {
+      try {
+        const res = await docSyncApi.getRun(projectId, runId)
+        if (stopped) return
+        setRun(res.run)
+        if (res.run.status === 'running') {
+          timer = window.setTimeout(tick, 1000)
+          return
         }
+        setSyncing(false)
+        setRunId('')
+        await refresh()
+        setToast(
+          res.run.status === 'failed'
+            ? `同步失败 · ${res.run.failed} 处：${(res.run.error || '未知错误').slice(0, 70)}${(res.run.error || '').length > 70 ? '…' : ''}`
+            : `同步完成 · 新增 ${res.run.added} / 更新 ${res.run.updated} / 移除 ${res.run.removed}${res.run.failed ? ` / 失败 ${res.run.failed}` : ''}`,
+        )
+      } catch (err) {
+        if (stopped) return
+        setSyncing(false)
+        setRunId('')
+        setError(errText(err))
       }
     }
-    return ids
-  }
 
-  /** 目录路径文案：产品研发 / 移动端 */
-  const folderPathLabel = (folderId: string): string => {
-    const parts: string[] = []
-    let cur = folders.find((f) => f.id === folderId)
-    while (cur) {
-      parts.unshift(cur.name)
-      cur = cur.parentId ? folders.find((f) => f.id === cur!.parentId) : undefined
+    void tick()
+    return () => { stopped = true; window.clearTimeout(timer) }
+  }, [syncing, runId, projectId, refresh])
+
+  /** 收正文中的文档轮询 */
+  useEffect(() => {
+    if (!docs.some((d) => d.kbState === 'fetching')) return
+    const timer = window.setInterval(() => { void refresh() }, 2000)
+    return () => window.clearInterval(timer)
+  }, [docs, refresh])
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(''), 4000)
+    return () => window.clearTimeout(timer)
+  }, [toast])
+
+  /* ---------- 操作 ---------- */
+
+  const handleSync = async () => {
+    if (syncing) return
+    try {
+      const res = await docSyncApi.startSync(projectId, activeSource || undefined)
+      setRunId(res.runId)
+      setRun(null)
+      setSyncing(true)
+    } catch (err) {
+      setError(errText(err))
     }
-    return parts.join(' / ')
   }
 
-  /** 目录下的文档数（含子孙目录） */
-  const countIn = (folderId: string) => {
-    const ids = subtreeIds(folderId)
-    return docs.filter((d) => ids.has(d.folderId)).length
-  }
-
-  const visibleDocs = selectedFolder === ALL
-    ? docs
-    : docs.filter((d) => subtreeIds(selectedFolder).has(d.folderId))
-  const folderName = selectedFolder === ALL
-    ? '全部文档'
-    : folderPathLabel(selectedFolder)
-
-  /* ---------- 飞书跳转 ---------- */
-  const openInFeishu = (doc: KbDoc) => {
-    const url = `https://feishu.cn/wiki/${doc.sourceRef || doc.id}`
-    window.open(url, '_blank', 'noopener')
-  }
-
-  /* ---------- 导入（飞书层级 → 本地目录层级） ---------- */
-
-  /** 查飞书树中路径下的直接子文档名列表（路径为目录时含直接子文档；无子文档 = 叶子文档路径） */
-  const fsDocsAt = (path: FsPath): string[] => {
-    let nodes: FsNode[] = FEISHU_TREE
-    for (const seg of path) {
-      const hit = nodes.find((n) => n.name === seg)
-      if (!hit || !hit.children) return []
-      nodes = hit.children
+  const handleKbToggle = async (doc: SyncDoc) => {
+    setBusyDoc(doc.id)
+    setMenuDoc('')
+    try {
+      if (doc.kbState === 'off') await docSyncApi.addToKb(projectId, doc.id)
+      else await docSyncApi.removeFromKb(projectId, doc.id)
+      await refresh()
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setBusyDoc('')
     }
-    // 该路径是目录：收集其全部子孙文档；是文档：空
-    const out: string[] = []
-    const walk = (list: FsNode[]) => {
-      for (const n of list) {
-        if (n.children) walk(n.children)
-        else out.push(n.name)
-      }
+  }
+
+  const handleRemoveSource = async (source: DocSource) => {
+    const ok = window.confirm(`移除同步源「${source.name}」？该源下已同步的文档与正文快照会一并删除。`)
+    if (!ok) return
+    try {
+      await docSyncApi.removeSource(projectId, source.id)
+      if (activeSource === source.id) setActiveSource('')
+      await refresh()
+    } catch (err) {
+      setError(errText(err))
     }
-    walk(nodes)
-    return out
   }
 
-  /** 授权（弹窗内，OAuth Mock 800ms） */
-  const handleAuthorize = () => {
-    setAuthorizing(true)
-    window.setTimeout(() => {
-      onUpdateFeishu((f) => ({
-        ...f,
-        authorized: true,
-        authorizedAt: new Date().toLocaleString('zh-CN', {
-          month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-        }).replace(/\//g, '-'),
-      }))
-      setAuthorizing(false)
-    }, 800)
-  }
+  /* ---------- 目录树派生 ---------- */
 
-  /** 导入所选（多选）：每个勾选节点解析为「目录 = 全部子文档」或「单文档」，1s 模拟解析后批量写入 */
-  const handleImport = () => {
-    if (fsChecked.length === 0 || importBusy) return
-    setImportBusy(true)
-    window.setTimeout(() => {
-      /** 展开勾选路径下的所有文档（路径, 文档名）对 */
-      const targets: { path: FsPath; name: string }[] = []
-      for (const key of fsChecked) {
-        const path = key.split('/')
-        // 勾选的是文档（叶）：直接一条；勾选的是目录：取其下全部子文档
-        const docsInPath = fsDocsAt(path)
-        if (docsInPath.length > 0) {
-          // 该路径下有直接子文档 → 目录（含全部子孙文档）或本身就是文档
-          targets.push(...docsInPath.map((name) => ({ path, name })))
-        } else {
-          // 叶子文档节点
-          const name = path[path.length - 1]
-          targets.push({ path: path.slice(0, -1), name })
-        }
-      }
-      // 按路径逐级建目录 + 生成文档
-      const newFolders: KbFolder[] = []
-      const newDocs: KbDoc[] = []
-      const folderIdByPath = new Map<string, string>()
-      const localFolders = [...folders]
-      const ensurePath = (path: FsPath): string => {
-        const pathKey = path.join('/')
-        if (folderIdByPath.has(pathKey)) return folderIdByPath.get(pathKey)!
-        let parentId: string | undefined
-        let lastId = ''
-        for (const seg of path) {
-          const segKey = parentId ? `${parentId}/${seg}` : seg
-          let fid = folderIdByPath.get(segKey)
-          if (!fid) {
-            const exist = localFolders.find((f) => f.name === seg && (f.parentId ?? '') === (parentId ?? ''))
-            if (exist) {
-              fid = exist.id
-            } else {
-              const folder: KbFolder = { id: `f${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name: seg }
-              if (parentId) folder.parentId = parentId
-              localFolders.push(folder)
-              newFolders.push(folder)
-              fid = folder.id
-            }
-            folderIdByPath.set(segKey, fid)
-          }
-          lastId = fid
-          parentId = fid
-        }
-        return lastId
-      }
-      targets.forEach(({ path, name }, i) => {
-        const folderId = path.length > 0 ? ensurePath(path) : ''
-        newDocs.push({
-          id: `d${Date.now()}_${i}`,
-          title: name,
-          source: '团队 wiki',
-          sourceRef: `wiki/${[...path, name].join('/')}`,
-          folderId,
-          importedAt: nowStamp(),
-          updatedAt: nowStamp(),
-          markdown: '',
-          content: [],
-          summary: `（从飞书 ${path.join('/') || '根目录'} 导入，解析后可查看摘要。）`,
-        })
-      })
-      onUpdateLibrary({
-        ...library,
-        folders: localFolders,
-        docs: [...newDocs, ...docs],
-      })
-      setImportBusy(false)
-      setImporting(false)
-      setFsChecked([])
-    }, 1000)
-  }
+  const folderPaths = useMemo(() => {
+    const set = new Set<string>()
+    for (const doc of docs) {
+      if (!doc.parentPath) continue
+      const parts = doc.parentPath.split('/')
+      for (let i = 1; i <= parts.length; i += 1) set.add(parts.slice(0, i).join('/'))
+    }
+    return [...set]
+  }, [docs])
 
-  /* ---------- 左栏目录树（多层级递归渲染，对齐 kbi-tree 样式） ---------- */
-  const renderFolderNode = (folder: KbFolder, depth: number) => {
-    const children = folders.filter((f) => f.parentId === folder.id)
-    const collapsed = collapsedIds.includes(folder.id)
+  const childrenOf = (path: string) => folderPaths.filter((p) => parentOf(p) === path)
+
+  const docsIn = (path: string) => docs.filter((d) => (
+    path === '' ? true : d.parentPath === path || d.parentPath.startsWith(`${path}/`)
+  ))
+
+  const visibleDocs = docsIn(selectedPath)
+  const currentSource = sources.find((s) => s.id === activeSource) || null
+  const listLabel = selectedPath || (currentSource ? currentSource.name : '全部文档')
+
+  const renderFolder = (path: string, depth: number) => {
+    const children = childrenOf(path)
+    const isCollapsed = collapsed.includes(path)
     return (
-      <div key={folder.id}>
+      <div key={path}>
         <button
           type="button"
-          className={`kbi-tree-item${selectedFolder === folder.id ? ' active' : ''}`}
+          className={`kbi-tree-item${selectedPath === path ? ' active' : ''}`}
           style={{ paddingLeft: 8 + depth * 14 }}
-          onClick={() => setSelectedFolder(folder.id)}
+          onClick={() => setSelectedPath(path)}
         >
           {children.length > 0 ? (
             <span
-              className={`fs-tree-caret${collapsed ? '' : ' open'}`}
-              title={collapsed ? '展开' : '折叠'}
+              className={`fs-tree-caret${isCollapsed ? '' : ' open'}`}
+              title={isCollapsed ? '展开' : '折叠'}
               onClick={(e) => {
                 e.stopPropagation()
-                setCollapsedIds(collapsed
-                  ? collapsedIds.filter((id) => id !== folder.id)
-                  : [...collapsedIds, folder.id])
+                setCollapsed(isCollapsed
+                  ? collapsed.filter((p) => p !== path)
+                  : [...collapsed, path])
               }}
             >
               <ChevronRightIcon size={11} />
             </span>
-          ) : (
-            <span className="fs-tree-caret-sp" />
-          )}
+          ) : <span className="fs-tree-caret-sp" />}
           <FolderIcon size={14} />
-          <span className="kbi-tree-name">{folder.name}</span>
-          <span className="kbi-tree-count">{countIn(folder.id)}</span>
+          <span className="kbi-tree-name">{path.split('/').pop()}</span>
+          <span className="kbi-tree-count">{docsIn(path).length}</span>
         </button>
-        {!collapsed && children.map((c) => renderFolderNode(c, depth + 1))}
+        {!isCollapsed && children.map((child) => renderFolder(child, depth + 1))}
       </div>
     )
   }
 
-  /* ---------- 导入弹窗：飞书目录树递归渲染（多选） ---------- */
+  /* ---------- 渲染 ---------- */
 
-  /** 某路径下全部子文档的完整路径集合（勾选目录时全量计算勾选态） */
-  const subtreeDocKeys = (path: FsPath): string[] => {
-    const docs = fsDocsAt(path)
-    return docs.map((name) => [...path, name].join('/'))
-  }
-
-  const toggleCheck = (key: string) => {
-    setFsChecked((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
-  }
-
-  /** 勾选态：自身勾选；目录 = 三态（全选 ✓ / 部分 — / 空） */
-  const checkStateOf = (key: string, hasChildren: boolean): 'on' | 'part' | 'off' => {
-    if (fsChecked.includes(key)) return 'on'
-    if (!hasChildren) return 'off'
-    // 目录：子孙文档有勾选但自身未勾 → 半选
-    const docs = subtreeDocKeys(key.split('/'))
-    const hitCount = docs.filter((k) => fsChecked.some((c) => k === c || k.startsWith(`${c}/`) || c.startsWith(`${k}/`))).length
-    if (hitCount > 0 && hitCount < docs.length) return 'part'
-    if (hitCount === docs.length && docs.length > 0) return 'on'
-    return 'off'
-  }
-
-  const renderFsNode = (node: FsNode, path: FsPath, depth: number) => {
-    const nodePath = [...path, node.name]
-    const key = nodePath.join('/')
-    const hasChildren = !!node.children && node.children.length > 0
-    const collapsed = fsCollapsed.includes(key)
-    const checkState = checkStateOf(key, hasChildren)
-    return (
-      <div key={key}>
-        <div
-          className={`fs-tree-item${checkState === 'on' ? ' sel' : ''}`}
-          style={{ paddingLeft: 8 + depth * 16 }}
-        >
-          {/* 多选 checkbox：目录三态 / 文档两态 */}
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={checkState === 'on'}
-            className={`fs-check${checkState === 'on' ? ' on' : ''}${checkState === 'part' ? ' part' : ''}`}
-            title={hasChildren ? '勾选导入该目录全部文档' : '勾选导入该文档'}
-            onClick={() => toggleCheck(key)}
-          >
-            {checkState === 'on' ? '✓' : checkState === 'part' ? '—' : ''}
-          </button>
-          {/* 名称行：目录点击 = 展开折叠 */}
-          <button
-            type="button"
-            className="fs-tree-label"
-            onClick={() => {
-              if (hasChildren) {
-                setFsCollapsed(collapsed
-                  ? fsCollapsed.filter((k) => k !== key)
-                  : [...fsCollapsed, key])
-              }
-            }}
-          >
-            {hasChildren ? (
-              <span className={`fs-tree-caret${collapsed ? '' : ' open'}`}><ChevronRightIcon size={11} /></span>
-            ) : (
-              <span className="fs-tree-caret-sp" />
-            )}
-            {hasChildren
-              ? <span className="fs-tree-dir"><FolderIcon size={14} /></span>
-              : <span className="fs-tree-doc"><DocIcon size={13} /></span>}
-            <span className="fs-tree-name">{node.name}</span>
-            {hasChildren && node.count !== undefined && (
-              <span className="fs-tree-count">{node.count} 篇</span>
-            )}
-          </button>
-        </div>
-        {!collapsed && hasChildren && node.children!.map((c) => renderFsNode(c, nodePath, depth + 1))}
-      </div>
-    )
-  }
-
-  /* ---------- 列表视图（对齐项目知识库 kbi 样式体系：左目录树 + 右列表） ---------- */
   return (
     <div className="doclib-panel">
-      <div className="doclib-two-col">
-        {/* 左：目录树（多层级，对齐 kbi-tree） */}
-        <div className="kbi-tree">
-          <div className="kbi-tree-title">目录</div>
-          <button
-            type="button"
-            className={`kbi-tree-item${selectedFolder === ALL ? ' active' : ''}`}
-            onClick={() => setSelectedFolder(ALL)}
-          >
-            <DocIcon size={14} />
-            <span className="kbi-tree-name">全部文档</span>
-            <span className="kbi-tree-count"><b>{docs.length}</b>/{docs.length}</span>
-          </button>
-          {folders.filter((f) => !f.parentId).map((f) => renderFolderNode(f, 0))}
-        </div>
+      {/* 工具栏：源切换 + 同步 + 源管理 */}
+      <div className="doclib-toolbar">
+        <select
+          className="doclib-select"
+          value={activeSource}
+          onChange={(e) => setActiveSource(e.target.value)}
+          title="切换同步源"
+        >
+          <option value="">全部同步源</option>
+          {sources.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.kind === 'wiki_space' ? '知识库 · ' : '文件夹 · '}{s.name}
+            </option>
+          ))}
+        </select>
 
-        {/* 右：列表（对齐 kbi-list：工具行 + 行列表） */}
-        <div className="kbi-list">
-          <div className="kbi-list-tools">
-            <span className="doclib-list-label">{folderName}（{visibleDocs.length} 篇）</span>
-            <span className="doclib-tools-acts">
-              <button type="button" className="fs-import-btn" onClick={() => setImporting(true)}>
-                <DownloadIcon size={13} />
-                从飞书导入
-              </button>
-            </span>
-          </div>
-          <div className="kbi-list-body">
-            {visibleDocs.length === 0 && <div className="kbi-empty">该目录下暂无文档</div>}
-            {visibleDocs.map((doc) => (
-              <div key={doc.id} className="kbi-row">
-                <DocIcon size={16} className="kbi-row-icon" />
-                <span className="kbi-row-main">
-                  <span className="kbi-row-title">
-                    <span className="kbi-row-name">{doc.title}</span>
-                    <span className="kbi-badge off">{doc.source}</span>
-                  </span>
-                  <span className="kbi-row-sub">
-                    {doc.sourceRef || doc.source} · 更新于 {doc.updatedAt}
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  className="doc-jump-btn"
-                  title="在飞书中打开"
-                  onClick={() => openInFeishu(doc)}
-                >
-                  <ExternalIcon size={15} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <span className="doclib-run">
+          {syncing
+            ? `同步中…${run ? ` 已扫描 ${run.total} 篇` : ''}`
+            : currentSource?.lastSyncedAt
+              ? `上次同步 ${fmtTime(currentSource.lastSyncedAt)}`
+              : ''}
+        </span>
+
+        <span className="doclib-tools-acts">
+          <button type="button" className="fs-import-btn" disabled={syncing || sources.length === 0} onClick={handleSync}>
+            <DownloadIcon size={13} />
+            {syncing ? '同步中…' : '立即同步'}
+          </button>
+          <button type="button" className="fs-import-btn" onClick={() => setAddOpen(true)}>
+            <PlusIcon size={13} />
+            添加同步源
+          </button>
+        </span>
       </div>
 
-      {/* 飞书 OAuth 导入弹窗 */}
-      {importing && (
-        <div
-          className="modal-overlay"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) setImporting(false) }}
-        >
-          <div className="modal-box fs-import-modal" role="dialog" aria-modal="true" aria-label="从飞书导入文档">
-            <div className="modal-head">
-              <span className="modal-title">从飞书导入文档</span>
-              <button type="button" className="modal-close" aria-label="关闭" onClick={() => setImporting(false)}>×</button>
-            </div>
+      {error && <div className="doclib-error">{error}</div>}
 
-            {/* 步骤条 */}
-            <div className="fs-steps">
-              <span className={`fs-step${feishu.authorized ? ' done' : ' active'}`}>
-                <span className="fs-step-num">{feishu.authorized ? '✓' : '1'}</span>个人授权
-              </span>
-              <span className="fs-step-arrow">→</span>
-              <span className={`fs-step${feishu.authorized ? ' active' : ''}`}>
-                <span className="fs-step-num">2</span>选择目录
-              </span>
-            </div>
+      {loading ? (
+        <div className="kbi-empty">正在加载飞书文档…</div>
+      ) : sources.length === 0 ? (
+        <div className="doclib-empty-state">
+          <FolderIcon size={26} />
+          <p>还没有飞书同步源</p>
+          <span>添加一个云空间文件夹或知识库空间，就能把飞书文档同步到这里。</span>
+          <button type="button" className="btn-primary" onClick={() => setAddOpen(true)}>添加同步源</button>
+        </div>
+      ) : (
+        <div className="doclib-two-col">
+          <div className="kbi-tree">
+            <div className="kbi-tree-title">目录</div>
+            <button
+              type="button"
+              className={`kbi-tree-item${selectedPath === '' ? ' active' : ''}`}
+              onClick={() => setSelectedPath('')}
+            >
+              <DocIcon size={14} />
+              <span className="kbi-tree-name">全部文档</span>
+              <span className="kbi-tree-count"><b>{docs.length}</b></span>
+            </button>
+            {childrenOf('').map((path) => renderFolder(path, 0))}
+          </div>
 
-            {/* 步骤 1：个人授权卡（与凭证无关，未授权直接授权） */}
-            <div className="fs-auth-card">
-              <div className="fs-auth-title">飞书个人授权</div>
-              <div className="fs-auth-sub">权限：读取云文档目录 · OAuth 登录授权，无需配置应用凭证</div>
-              {feishu.authorized ? (
-                <div className="fs-auth-done">
-                  <span className="fs-ok-badge">已授权</span>
-                  {feishu.authorizedAccount} · {feishu.authorizedAt}
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="fs-auth-btn"
-                  disabled={authorizing}
-                  title="发起飞书个人授权"
-                  onClick={handleAuthorize}
-                >
-                  {authorizing ? '授权中…' : '授权'}
-                </button>
+          <div className="kbi-list">
+            <div className="kbi-list-tools">
+              <span className="doclib-list-label">{listLabel}（{visibleDocs.length} 篇）</span>
+            </div>
+            <div className="kbi-list-body">
+              {visibleDocs.length === 0 && (
+                <div className="kbi-empty">{syncing ? '同步中，稍候刷新…' : '该目录下暂无文档，点击「立即同步」拉取'}</div>
               )}
-            </div>
-
-            {/* 步骤 2：飞书目录树（多层级） */}
-            <div className="fs-tree-wrap">
-              <div className="fs-tree">
-                {FEISHU_TREE.map((n) => renderFsNode(n, [], 0))}
-              </div>
-            </div>
-
-            <div className="modal-actions">
-              <button type="button" className="text-btn" onClick={() => setImporting(false)}>取消</button>
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={!feishu.authorized || fsChecked.length === 0 || importBusy}
-                onClick={handleImport}
-              >
-                {importBusy
-                  ? '导入中…'
-                  : fsChecked.length > 0
-                    ? `导入所选（${fsChecked.length} 项）`
-                    : '请勾选要导入的目录或文档'}
-              </button>
+              {visibleDocs.map((doc) => {
+                const badge = kbBadgeOf(doc)
+                return (
+                  <div key={doc.id} className="kbi-row">
+                    <DocIcon size={16} className="kbi-row-icon" />
+                    <span className="kbi-row-main">
+                      <span className="kbi-row-title">
+                        <span className="kbi-row-name">{doc.title}</span>
+                        {badge && <span className={`kbi-badge ${badge.cls}`}>{badge.label}</span>}
+                      </span>
+                      <span className="kbi-row-sub">
+                        {TYPE_LABEL[doc.externalType] || doc.externalType}
+                        {doc.parentPath ? ` · ${doc.parentPath}` : ''}
+                        {` · 更新于 ${fmtTime(doc.modifiedAt)}`}
+                        {doc.kbState === 'failed' && doc.kbError ? ` · ${doc.kbError}` : ''}
+                      </span>
+                    </span>
+                    <div className="doclib-row-acts">
+                      <button
+                        type="button"
+                        className="doclib-dots"
+                        title="更多"
+                        disabled={busyDoc === doc.id}
+                        onClick={() => setMenuDoc(menuDoc === doc.id ? '' : doc.id)}
+                      >
+                        ⋯
+                      </button>
+                      {menuDoc === doc.id && (
+                        <>
+                          <div className="doclib-menu-mask" onClick={() => setMenuDoc('')} />
+                          <div className="doclib-row-menu">
+                            {doc.kbState === 'off' ? (
+                              <button type="button" onClick={() => void handleKbToggle(doc)}>＋ 加入知识库</button>
+                            ) : (
+                              <>
+                                {doc.stale && <button type="button" onClick={() => void handleKbToggle(doc)}>↻ 重新拉取正文</button>}
+                                <button type="button" onClick={() => void handleKbToggle(doc)}>✕ 移出知识库</button>
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        className="doc-jump-btn"
+                        title="在飞书中打开"
+                        onClick={() => {
+                          const url = doc.url || `https://feishu.cn/wiki/${doc.externalToken}`
+                          window.open(url, '_blank', 'noopener')
+                        }}
+                      >
+                        <ExternalIcon size={15} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
       )}
+
+      {toast && <div className="doclib-toast">{toast}</div>}
+
+      {addOpen && (
+        <AddSourceModal
+          projectId={projectId}
+          sources={sources}
+          onRemove={handleRemoveSource}
+          onClose={() => setAddOpen(false)}
+          onAdded={async (added) => {
+            setAddOpen(false)
+            await refresh()
+            if (added[0]) setActiveSource(added[0].id)
+            try {
+              const res = await docSyncApi.startSync(projectId)
+              setRunId(res.runId)
+              setRun(null)
+              setSyncing(true)
+            } catch (err) {
+              setError(errText(err))
+            }
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/* ================= 添加同步源弹窗（目录 / 空间 / 单篇文档，可多选） ================= */
+
+interface AddSourceModalProps {
+  projectId: string
+  sources: DocSource[]
+  onRemove: (source: DocSource) => void | Promise<void>
+  onClose: () => void
+  onAdded: (sources: DocSource[]) => void | Promise<void>
+}
+
+interface Picked {
+  key: string
+  kind: DocSourceKind
+  token: string
+  name: string
+  url?: string
+  docType?: string
+}
+
+function AddSourceModal({ projectId, sources, onRemove, onClose, onAdded }: AddSourceModalProps) {
+  const [kind, setKind] = useState<DocSourceKind>('folder')
+  const [path, setPath] = useState<{ token: string; name: string }[]>([])
+  const [items, setItems] = useState<BrowseItem[]>([])
+  const [currentToken, setCurrentToken] = useState('')
+  const [auth, setAuth] = useState<DocSyncAuth>('tenant')
+  const [selected, setSelected] = useState<Picked[]>([])
+  const [browsing, setBrowsing] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async (nextKind: DocSourceKind, nextPath: { token: string; name: string }[]) => {
+    setBrowsing(true)
+    setError('')
+    try {
+      const wikiSpace = nextKind === 'wiki_space' ? (nextPath[0]?.token || '') : ''
+      const parent = nextKind === 'wiki_space'
+        ? (nextPath.length > 1 ? nextPath[nextPath.length - 1].token : '')
+        : (nextPath.length > 0 ? nextPath[nextPath.length - 1].token : '')
+      const res = await docSyncApi.browse(projectId, { kind: nextKind === 'doc' ? 'folder' : nextKind, token: wikiSpace, parent, auth })
+      setItems(res.items)
+      setCurrentToken(res.token)
+      setAuth(res.auth)
+    } catch (err) {
+      setItems([])
+      setError(errText(err))
+    } finally {
+      setBrowsing(false)
+    }
+  }, [projectId, auth])
+
+  useEffect(() => { void load(kind, path) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const switchKind = (next: 'folder' | 'wiki_space') => {
+    if (next === kind) return
+    setKind(next)
+    setPath([])
+    setItems([])
+    setCurrentToken('')
+    void load(next, [])
+  }
+
+  const enter = (item: BrowseItem) => {
+    if (!item.hasChildren) return
+    const token = kind === 'wiki_space' ? (item.nodeToken || item.token) : item.token
+    const next = [...path, { token, name: item.name }]
+    setPath(next)
+    void load(kind, next)
+  }
+
+  const goRoot = () => {
+    setPath([])
+    void load(kind, [])
+  }
+
+  /** 列表项 → 待添加的源 */
+  const toPick = (item: BrowseItem): Picked => {
+    if (item.type === 'space') {
+      return { key: `wiki_space:${item.token}`, kind: 'wiki_space', token: item.token, name: item.name }
+    }
+    if (kind === 'folder' && item.type === 'folder') {
+      return { key: `folder:${item.token}`, kind: 'folder', token: item.token, name: item.name }
+    }
+    return {
+      key: `doc:${item.token}`,
+      kind: 'doc',
+      token: item.token,
+      name: item.name,
+      url: item.url,
+      docType: item.objType || 'docx',
+    }
+  }
+
+  /** 当前所在目录本身也可以作为一个源（整棵子树） */
+  const currentPick: Picked | null = kind === 'folder' && currentToken
+    ? {
+      key: `folder:${currentToken}`,
+      kind: 'folder',
+      token: currentToken,
+      name: path.length > 0 ? path[path.length - 1].name : '云空间根目录',
+    }
+    : null
+
+  const isOn = (key: string) => selected.some((p) => p.key === key)
+  const toggle = (pick: Picked) => setSelected((prev) => (
+    prev.some((p) => p.key === pick.key) ? prev.filter((p) => p.key !== pick.key) : [...prev, pick]
+  ))
+
+  /** 已在同步源里的项：列表中直接显示为勾选，点击即移除 */
+  const sourceByKey = new Map(sources.map((s) => [`${s.kind}:${s.token}`, s]))
+  const existingOf = (pick: Picked) => sourceByKey.get(pick.key)
+  const currentExisting = currentPick ? existingOf(currentPick) : undefined
+
+  const handleAdd = async () => {
+    if (selected.length === 0 || adding) return
+    setAdding(true)
+    setError('')
+    try {
+      const res = await docSyncApi.addSources(projectId, selected.map((p) => ({
+        kind: p.kind,
+        token: p.token,
+        name: p.name,
+        url: p.url,
+        auth,
+        docType: p.docType,
+      })))
+      if (res.failed.length > 0) {
+        setError(res.failed.map((f) => `${f.name || '未命名'}：${f.error}`).join('；'))
+        if (res.sources.length === 0) return
+      }
+      await onAdded(res.sources)
+    } catch (err) {
+      setError(errText(err))
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="modal-box fs-import-modal" role="dialog" aria-modal="true" aria-label="添加飞书同步源">
+        <div className="modal-head">
+          <span className="modal-title">添加飞书同步源</span>
+          <button type="button" className="modal-close" aria-label="关闭" onClick={onClose}>×</button>
+        </div>
+
+        <div className="fs-kind-tabs">
+          <button type="button" className={kind === 'folder' ? 'active' : ''} onClick={() => switchKind('folder')}>
+            云空间
+          </button>
+          <button type="button" className={kind === 'wiki_space' ? 'active' : ''} onClick={() => switchKind('wiki_space')}>
+            知识库空间
+          </button>
+        </div>
+
+        <div className="fs-breadcrumb">
+          <button type="button" onClick={goRoot}>根目录</button>
+          {path.map((seg, index) => (
+            <span key={`${seg.token}-${index}`}>
+              <span className="fs-crumb-sep">/</span>
+              <span className="fs-crumb-cur">{seg.name}</span>
+            </span>
+          ))}
+          <span className="fs-auth-chip">{auth === 'user' ? '个人身份' : '应用身份'}</span>
+        </div>
+
+        <div className="fs-select-hint">
+          勾选目录 = 同步整棵子树；勾选文档 = 只同步这一篇。已添加的项显示为勾选，点一下可移除。
+        </div>
+
+        <div className="fs-tree-wrap" style={{ maxHeight: 300 }}>
+          <div className="fs-tree">
+            {currentPick && (
+              <div className={`fs-tree-item${currentExisting || isOn(currentPick.key) ? ' sel' : ''}`}>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={Boolean(currentExisting || isOn(currentPick.key))}
+                  className={`fs-check${currentExisting || isOn(currentPick.key) ? ' on' : ''}${currentExisting ? ' locked' : ''}`}
+                  title={currentExisting ? '已在同步源中，点击移除' : '勾选当前目录（含全部子目录）'}
+                  onClick={() => {
+                    if (currentExisting) void onRemove(currentExisting)
+                    else toggle(currentPick)
+                  }}
+                >
+                  {currentExisting || isOn(currentPick.key) ? '✓' : ''}
+                </button>
+                <span className="fs-current-label">
+                  <FolderIcon size={14} />
+                  <span className="fs-tree-name">当前目录：{currentPick.name}</span>
+                  {currentExisting && <span className="fs-tree-count">已添加</span>}
+                </span>
+              </div>
+            )}
+
+            {browsing && <div className="kbi-empty">正在读取飞书目录…</div>}
+            {!browsing && items.length === 0 && <div className="kbi-empty">这里没有可用的目录</div>}
+
+            {!browsing && items.map((item) => {
+              const pick = toPick(item)
+              const existing = existingOf(pick)
+              const on = Boolean(existing) || isOn(pick.key)
+              return (
+                <div key={`${item.token}-${item.name}`} className={`fs-tree-item${on ? ' sel' : ''}`}>
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={on}
+                    className={`fs-check${on ? ' on' : ''}${existing ? ' locked' : ''}`}
+                    title={existing
+                      ? '已在同步源中，点击移除'
+                      : pick.kind === 'doc' ? '勾选只同步这一篇' : '勾选同步整棵子树'}
+                    onClick={() => {
+                      if (existing) void onRemove(existing)
+                      else toggle(pick)
+                    }}
+                  >
+                    {on ? '✓' : ''}
+                  </button>
+                  <button
+                    type="button"
+                    className="fs-tree-label"
+                    disabled={!item.hasChildren}
+                    onClick={() => enter(item)}
+                  >
+                    {item.hasChildren
+                      ? <span className="fs-tree-caret open"><ChevronRightIcon size={11} /></span>
+                      : <span className="fs-tree-caret-sp" />}
+                    {item.type === 'doc'
+                      ? <span className="fs-tree-doc"><DocIcon size={13} /></span>
+                      : <span className="fs-tree-dir"><FolderIcon size={14} /></span>}
+                    <span className="fs-tree-name">{item.name}</span>
+                    {existing && <span className="fs-tree-count">已添加</span>}
+                    {item.hasChildren && <span className="fs-tree-count">下钻</span>}
+                    {item.type === 'doc' && <span className="fs-tree-count">{TYPE_LABEL[item.objType || ''] || item.objType}</span>}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="fs-pick">
+          {selected.length > 0
+            ? <>已选 {selected.length} 项：{selected.map((p) => p.name).join('、')}</>
+            : <span className="fs-pick-hint">还没有勾选任何目录或文档</span>}
+        </div>
+
+        {error && <div className="doclib-error">{error}</div>}
+
+        <div className="modal-actions">
+          <button type="button" className="text-btn" onClick={onClose}>取消</button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={selected.length === 0 || adding}
+            onClick={() => void handleAdd()}
+          >
+            {adding ? '添加中…' : `添加所选（${selected.length} 项）`}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

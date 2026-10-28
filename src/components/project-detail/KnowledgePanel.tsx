@@ -1,21 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Knowledge, DocLibrary } from '../../data/projects'
-import type { FeishuSettings } from '../../data/settings'
 import SegmentedControl from '../SegmentedControl'
 import DocLibraryView from './DocLibraryView'
 import KbIndexPanel from './KbIndexPanel'
 import './KnowledgePanel.css'
 
 interface KnowledgePanelProps {
-  /** 文档库（「文档」子 tab 数据源 = project.documents） */
-  documents: DocLibrary
-  onUpdateDocuments: (documents: DocLibrary) => void
-  /** 知识数据（「项目知识库」子 tab 取 folders/docs；记忆已拆至独立「记忆」tab） */
-  knowledge: Knowledge
-  onUpdateKnowledge: (k: Knowledge) => void
-  /** 飞书个人授权设置（「文档」子 tab OAuth 导入用） */
-  feishu: FeishuSettings
-  onUpdateFeishu: (updater: (f: FeishuSettings) => FeishuSettings) => void
+  /** 项目 id（两个子 tab 都直接读项目下的飞书文档接口） */
+  projectId: string
 }
 
 /** 滚动到最近的可滚动祖先顶部 */
@@ -32,14 +23,11 @@ function scrollToTop(el: HTMLElement | null) {
 
 /**
  * 「文档和知识库」面板：顶部分段切换（文档 / 项目知识库）。
- * - 文档：DocLibraryView（多层级目录树 + 只读文档列表 + ⇗ 跳飞书 + OAuth 导入）
- * - 项目知识库：KbIndexPanel（收录清单 + 索引状态 + 检索测试）
+ * - 文档：DocLibraryView（飞书同步源 + 真实目录树 + 文档清单 + 立即同步）
+ * - 项目知识库：KbIndexPanel（收录清单 + 正文拉取状态；切分检索待 P3）
  * 记忆已拆出为独立顶级 tab「记忆」（MemoryPanel）。
  */
-export default function KnowledgePanel({
-  documents, onUpdateDocuments, knowledge, onUpdateKnowledge,
-  feishu, onUpdateFeishu,
-}: KnowledgePanelProps) {
+export default function KnowledgePanel({ projectId }: KnowledgePanelProps) {
   const [segment, setSegment] = useState('docs')
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -58,15 +46,8 @@ export default function KnowledgePanel({
         ]}
       />
       {segment === 'docs'
-        ? (
-          <DocLibraryView
-            library={documents}
-            onUpdateLibrary={onUpdateDocuments}
-            feishu={feishu}
-            onUpdateFeishu={onUpdateFeishu}
-          />
-        )
-        : <KbIndexPanel knowledge={knowledge} onUpdateKnowledge={onUpdateKnowledge} />}
+        ? <DocLibraryView projectId={projectId} />
+        : <KbIndexPanel projectId={projectId} />}
     </div>
   )
 }

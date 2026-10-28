@@ -35,6 +35,7 @@
   gap: 8px;
   align-items: center;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* 行尾 ⇗ 跳飞书按钮（kbi-row 体系内右对齐） */
@@ -90,6 +91,7 @@
   max-height: calc(100vh - 96px);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 /* 凭证未配置警示条 */
@@ -244,11 +246,14 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 200px;
   max-height: 320px;
 }
 
 .fs-tree {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 6px;
 }
@@ -373,4 +378,400 @@
   font-size: 10.5px;
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+/* ===== 工具栏（同步源切换 / 立即同步 / 源管理） ===== */
+
+.doclib-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.doclib-select {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-primary);
+  padding: 5px 8px;
+  max-width: 240px;
+}
+
+.doclib-run {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', monospace;
+  white-space: nowrap;
+}
+
+.doclib-ghost-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.doclib-ghost-btn:hover {
+  background: var(--bg-hover, #f1f2f5);
+  color: var(--text-primary);
+}
+
+.doclib-menu-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.doclib-menu-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.doclib-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 41;
+  width: 300px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(20, 24, 33, 0.12);
+  padding: 6px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.doclib-menu-empty {
+  padding: 10px 8px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.doclib-source-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 7px;
+}
+
+.doclib-source-row:hover {
+  background: var(--bg-hover, #f6f7f9);
+}
+
+.doclib-source-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.doclib-source-name {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doclib-source-sub {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.doclib-link-danger {
+  border: none;
+  background: transparent;
+  color: #d34b4b;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+
+.doclib-link-danger:hover {
+  background: #fdecec;
+}
+
+.doclib-menu-add {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding: 8px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: #3370ff;
+  cursor: pointer;
+  border-radius: 0 0 7px 7px;
+}
+
+.doclib-menu-add:hover {
+  background: #eef2ff;
+}
+
+/* ===== 错误 / 空态 / 提示 ===== */
+
+.doclib-error {
+  flex-shrink: 0;
+  border: 1px solid #f0c8c8;
+  background: #fdf1f1;
+  color: #c0392b;
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 11.5px;
+}
+
+.doclib-empty-state {
+  flex: 1;
+  min-height: 220px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  padding: 24px;
+  text-align: center;
+}
+
+.doclib-empty-state p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.doclib-empty-state span {
+  font-size: 11.5px;
+  max-width: 380px;
+  line-height: 1.6;
+}
+
+.doclib-empty-state .btn-primary {
+  margin-top: 6px;
+}
+
+.doclib-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  background: rgba(28, 32, 40, 0.92);
+  color: #fff;
+  font-size: 11.5px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  z-index: 50;
+  white-space: normal;
+  max-width: 82%;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.doclib-panel {
+  position: relative;
+}
+
+/* ===== 行内操作 ===== */
+
+.doclib-row-acts {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.doclib-row-acts .doc-jump-btn {
+  margin-left: 0;
+}
+
+.doclib-dots {
+  border: none;
+  background: transparent;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: #9aa3b2;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.doclib-dots:hover {
+  background: var(--bg-hover, #f1f2f5);
+  color: var(--text-primary);
+}
+
+.doclib-row-menu {
+  position: absolute;
+  right: 26px;
+  top: calc(100% + 2px);
+  z-index: 41;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(20, 24, 33, 0.12);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.doclib-row-menu button {
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  font-size: 11.5px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.doclib-row-menu button:hover {
+  background: var(--bg-hover, #f6f7f9);
+}
+
+/* ===== 添加同步源弹窗：类型切换 / 面包屑 / 选中提示 ===== */
+
+.fs-kind-tabs {
+  display: inline-flex;
+  gap: 4px;
+  background: var(--bg-subtle, #f1f2f5);
+  border-radius: 8px;
+  padding: 3px;
+  margin-bottom: 10px;
+  align-self: flex-start;
+}
+
+.fs-kind-tabs button {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fs-kind-tabs button.active {
+  background: #fff;
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(20, 24, 33, 0.08);
+}
+
+.fs-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.fs-breadcrumb > button {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  color: #3370ff;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.fs-breadcrumb > button:hover {
+  background: #eef2ff;
+}
+
+.fs-crumb-sep {
+  color: #c2c5ca;
+  margin-right: 4px;
+}
+
+.fs-crumb-cur {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.fs-auth-chip {
+  margin-left: auto;
+  font-size: 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  color: var(--text-secondary);
+}
+
+.fs-pick {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 10px;
+  min-height: 18px;
+}
+
+.fs-pick b {
+  color: var(--text-primary);
+}
+
+.fs-pick-hint {
+  color: var(--text-secondary);
+}
+
+/* 添加同步源弹窗：多选提示 / 当前目录行 */
+.fs-select-hint {  font-size: 10.5px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.fs-current-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fs-current-label .fs-tree-name {
+  font-weight: 600;
+}
+
+.fs-tree-label:disabled {
+  cursor: default;
 }

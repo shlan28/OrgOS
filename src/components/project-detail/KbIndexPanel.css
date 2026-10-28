@@ -42,8 +42,9 @@
 .kbindex-stats-acts {
   margin-left: auto;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 /* 统计条/详情通用按钮 */
@@ -452,10 +453,15 @@
 }
 
 .kbi-chunk-body {
-  font-size: 11.5px;
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', monospace;
+  font-size: 11px;
   color: #3a3e45;
-  line-height: 1.7;
+  line-height: 1.65;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
 }
 
 .kbi-detail-empty {
@@ -516,11 +522,22 @@
   max-height: calc(100vh - 96px);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
+
+/* 结果区独立滚动：弹窗不整体撑破视口，头部搜索框保持可见 */
+.kbi-ret-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
 .kbi-ret-query {
   display: flex;
   gap: 8px;
   margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .kbi-ret-query input {
@@ -579,6 +596,8 @@
   color: #3a3e45;
   line-height: 1.7;
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* mono 工具类（组件内复用） */
@@ -586,3 +605,137 @@
 .kbi-ret-modal .mono {
   font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', monospace;
 }
+
+/* 正文快照预览（P3 前的只读展示） */
+.kbi-content-pre {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: var(--bg-subtle, #f7f8fa);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', monospace;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
+/* ===== 检索结果扩展信息 ===== */
+
+.kbi-ret-path {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.kbi-ret-open {
+  border: none;
+  background: transparent;
+  color: #9aa3b2;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.kbi-ret-open:hover {
+  color: #3370ff;
+  background: #eef2ff;
+}
+
+.kbi-ret-low {
+  border: 1px solid #ecd9b8;
+  background: var(--status-warning-bg, #fdf6ea);
+  color: var(--status-warning, #9a6b1f);
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 11.5px;
+  margin: 6px 0 10px;
+}
+
+.kbi-chunk-meta {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ===== 索引设置弹窗 ===== */
+
+.kbi-config-modal {
+  width: 520px;
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.kbi-config-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0 12px;
+}
+
+.kbi-config-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.kbi-config-row > span {
+  width: 68px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.kbi-config-row input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 9px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.kbi-config-row input:focus {
+  border-color: #b9c6ea;
+}
+
+.kbi-config-col {
+  align-items: flex-start;
+}
+
+.kbi-config-col textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 92px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 9px;
+  font-family: 'SF Mono', Menlo, Consolas, 'Noto Sans Mono CJK SC', monospace;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  resize: vertical;
+  outline: none;
+}
+
+.kbi-config-hint {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
